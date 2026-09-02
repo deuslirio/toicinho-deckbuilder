@@ -85,10 +85,18 @@ export function CardSearch({ index, onAdd }: Props) {
                 </div>
               </div>
               <div className="result-actions">
-                <button type="button" disabled={banned || outOfPool} onClick={() => onAdd(card, 'main')}>
+                <button
+                  type="button"
+                  title={banned || outOfPool ? 'Entra no deck, mas será apontada como ilegal' : undefined}
+                  onClick={() => onAdd(card, 'main')}
+                >
                   + Main
                 </button>
-                <button type="button" disabled={banned || outOfPool} onClick={() => onAdd(card, 'side')}>
+                <button
+                  type="button"
+                  title={banned || outOfPool ? 'Entra no deck, mas será apontada como ilegal' : undefined}
+                  onClick={() => onAdd(card, 'side')}
+                >
                   + Side
                 </button>
               </div>

@@ -7,3 +7,6 @@ dist/
 # Índice de cartas gerado no CI. NÃO commitar no main — o workflow o publica
 # direto no deploy do Pages. (Veja README > Pipeline de dados.)
 public/data/cards.json
+
+# screenshots locais
+shots/

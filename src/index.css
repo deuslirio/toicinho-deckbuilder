@@ -131,6 +131,17 @@ main {
 .p-W { color: #f5f0d8; } .p-U { color: #7fb3e0; } .p-B { color: #b0a0b8; }
 .p-R { color: #e07a5f; } .p-G { color: #7fbf7f; }
 
+.h3-note { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--muted); }
+.devotion { display: flex; flex-direction: column; gap: 5px; }
+.dev-row { display: flex; align-items: center; gap: 8px; }
+.dev-row .pip { min-width: 24px; text-align: center; flex: none; }
+.dev-track { flex: 1; height: 10px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
+.dev-bar { height: 100%; border-radius: 999px; }
+.b-W { background: #e7e0c2; } .b-U { background: #6ba7db; } .b-B { background: #9a86a6; }
+.b-R { background: #db6b4f; } .b-G { background: #6bb56b; }
+.dev-n { font-variant-numeric: tabular-nums; font-size: 12px; min-width: 52px; text-align: right; }
+.dev-pct { color: var(--muted); }
+
 .violations, .warnings { margin: 0; padding-left: 16px; font-size: 12px; }
 .violations li { color: var(--bad); }
 .warnings li { color: #d9a441; }

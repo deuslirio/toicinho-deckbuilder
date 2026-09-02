@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { IndexedCard } from '../lib/types';
 import { checkDeck, banlistMeta, TOICINHO } from '../formats/toicinho';
+import { COLORS, COLOR_LABEL, countPips, type ColorKey } from '../lib/mana';
 
 interface Row {
   card: IndexedCard;
@@ -34,6 +35,20 @@ export function DeckSummary({ rows }: { rows: Row[] }) {
     return c;
   }, [rows]);
 
+  // Devoção: total de símbolos de mana colorida no main (ponderado pela quantidade).
+  // Serve para dimensionar quantos terrenos de cada cor o deck precisa.
+  const devotion = useMemo(() => {
+    const d: Record<ColorKey, number> = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+    for (const r of rows) {
+      if (r.board !== 'main' || !r.card.manaCost) continue;
+      const pips = countPips(r.card.manaCost);
+      for (const c of COLORS) d[c] += pips[c] * r.qty;
+    }
+    return d;
+  }, [rows]);
+
+  const devotionTotal = COLORS.reduce((s, c) => s + devotion[c], 0);
+  const maxDevotion = Math.max(1, ...COLORS.map((c) => devotion[c]));
   const maxCurve = Math.max(1, ...curve);
 
   return (
@@ -69,6 +84,26 @@ export function DeckSummary({ rows }: { rows: Row[] }) {
           </span>
         ))}
       </div>
+
+      <h3>Devoção {devotionTotal > 0 && <span className="h3-note">{devotionTotal} símbolos</span>}</h3>
+      {devotionTotal === 0 ? (
+        <p className="empty">sem cartas coloridas no main</p>
+      ) : (
+        <div className="devotion">
+          {COLORS.filter((c) => devotion[c] > 0).map((c) => (
+            <div key={c} className="dev-row" title={COLOR_LABEL[c]}>
+              <span className={`pip p-${c}`}>{c}</span>
+              <div className="dev-track">
+                <div className={`dev-bar b-${c}`} style={{ width: `${(devotion[c] / maxDevotion) * 100}%` }} />
+              </div>
+              <span className="dev-n">
+                {devotion[c]}
+                <span className="dev-pct"> {Math.round((devotion[c] / devotionTotal) * 100)}%</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {report.violations.length > 0 && (
         <>

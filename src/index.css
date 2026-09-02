@@ -171,6 +171,39 @@ footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--line);
   background: var(--panel-2);
 }
 
+/* ---- Visual (pilhas por curva, estilo Arena) ---- */
+.visual { margin-top: 12px; }
+.visual.empty { color: var(--muted); text-align: center; padding: 60px; }
+.visual-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  align-items: flex-start;
+}
+.visual-side-h { margin: 18px 0 6px; }
+.vpile { flex: none; }
+.vpile-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 0 2px 4px; font-size: 13px; color: var(--muted);
+  position: sticky; left: 0;
+}
+.vpile-n { font-weight: 700; color: var(--text); }
+.vpile-stack { position: relative; }
+.vcard {
+  position: absolute;
+  left: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--panel-2);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  transition: transform 0.08s ease;
+}
+.vcard:hover { transform: translateY(-4px); }
+.vcard img { width: 100%; display: block; }
+.vcard.bad { outline: 2px solid var(--bad); outline-offset: -2px; }
+.vcard-fallback { display: block; padding: 6px 8px; font-size: 12px; font-weight: 600; }
+
 /* ---- Mesa (goldfish) ---- */
 .playmat { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; height: calc(100vh - 150px); min-height: 520px; }
 .playmat.empty-mat { align-items: center; justify-content: center; gap: 14px; color: var(--muted); text-align: center; }

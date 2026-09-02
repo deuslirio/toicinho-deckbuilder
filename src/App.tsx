@@ -8,6 +8,7 @@ import { DeckColumn } from './components/DeckColumn';
 import { DeckSummary } from './components/DeckSummary';
 import { CardPreviewProvider } from './components/CardPreview';
 import { Playmat } from './components/Playmat';
+import { DeckVisual } from './components/DeckVisual';
 import './index.css';
 
 type Index = Awaited<ReturnType<typeof loadCardIndex>>;
@@ -19,7 +20,7 @@ export default function App() {
   const [lang, setLang] = useState<'pt' | 'en'>('en');
   const toggleLang = () => setLang((l) => (l === 'pt' ? 'en' : 'pt'));
   const [showText, setShowText] = useState(false);
-  const [view, setView] = useState<'editor' | 'mesa'>('editor');
+  const [view, setView] = useState<'editor' | 'visual' | 'mesa'>('editor');
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number>();
 
@@ -72,20 +73,16 @@ export default function App() {
         />
         <div className="header-actions">
           <div className="view-switch">
-            <button
-              type="button"
-              className={view === 'editor' ? 'on' : ''}
-              onClick={() => setView('editor')}
-            >
-              Editor
-            </button>
-            <button
-              type="button"
-              className={view === 'mesa' ? 'on' : ''}
-              onClick={() => setView('mesa')}
-            >
-              Mesa
-            </button>
+            {(['editor', 'visual', 'mesa'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                className={view === v ? 'on' : ''}
+                onClick={() => setView(v)}
+              >
+                {v === 'editor' ? 'Editor' : v === 'visual' ? 'Visual' : 'Mesa'}
+              </button>
+            ))}
           </div>
           <button type="button" onClick={toggleLang}>
             Idioma: {lang.toUpperCase()}
@@ -124,6 +121,8 @@ export default function App() {
 
       {view === 'mesa' ? (
         <Playmat rows={rows} lang={lang} />
+      ) : view === 'visual' ? (
+        <DeckVisual rows={rows} lang={lang} />
       ) : (
         <main>
           <CardSearch

@@ -213,6 +213,10 @@ footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--line);
 .pm-info { color: var(--muted); font-size: 13px; }
 .pm-info .hint { color: var(--accent); }
 
+.zoom-ctl { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-left: auto; }
+.zoom-ctl button { border: 0; border-radius: 0; background: var(--panel); min-width: 34px; }
+.zoom-ctl button:nth-child(2) { min-width: 52px; font-variant-numeric: tabular-nums; }
+
 .field {
   flex: 1;
   position: relative;
@@ -221,6 +225,15 @@ footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--line);
   border-radius: 10px;
   background:
     radial-gradient(120% 80% at 50% 0%, #26221d, #17140f 70%);
+}
+.field-inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% / var(--z, 1));
+  height: calc(100% / var(--z, 1));
+  transform: scale(var(--z, 1));
+  transform-origin: top left;
 }
 .field-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-style: italic; pointer-events: none; }
 

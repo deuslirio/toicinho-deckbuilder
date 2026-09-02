@@ -16,10 +16,21 @@ export function Playmat({ rows, lang }: { rows: Row[]; lang: 'pt' | 'en' }) {
   const [drawn, setDrawn] = useState(0);
   const [mulligans, setMulligans] = useState(0);
   const [started, setStarted] = useState(false);
+  const [zoom, setZoom] = useState(1);
 
   const fieldRef = useRef<HTMLDivElement>(null);
   const zRef = useRef(1);
   const nextZ = () => (zRef.current += 1);
+
+  const clampZoom = (v: number) => Math.max(0.4, Math.min(1.8, Math.round(v * 100) / 100));
+
+  // client px -> coordenadas "de mundo" do campo (que independem do zoom)
+  const toWorld = (clientX: number, clientY: number, r: DOMRect) => ({
+    x: (clientX - r.left) / zoom,
+    y: (clientY - r.top) / zoom,
+    w: r.width / zoom,
+    h: r.height / zoom,
+  });
 
   const deckSize = useMemo(
     () => rows.filter((r) => r.board === 'main').reduce((s, r) => s + r.qty, 0),
@@ -61,8 +72,9 @@ export function Playmat({ rows, lang }: { rows: Row[]; lang: 'pt' | 'en' }) {
     setHand((h) => {
       const inst = h.find((c) => c.uid === uid);
       if (!inst) return h;
-      const x = clamp(clientX - r.left - CW / 2, 0, r.width - CW);
-      const y = clamp(clientY - r.top - CH / 2, 0, r.height - CH);
+      const w = toWorld(clientX, clientY, r);
+      const x = clamp(w.x - CW / 2, 0, w.w - CW);
+      const y = clamp(w.y - CH / 2, 0, w.h - CH);
       setField((f) => [...f, { ...inst, x, y, z: nextZ() }]);
       return h.filter((c) => c.uid !== uid);
     });
@@ -80,13 +92,14 @@ export function Playmat({ rows, lang }: { rows: Row[]; lang: 'pt' | 'en' }) {
       });
       return;
     }
+    const w = toWorld(clientX, clientY, r);
     setField((f) =>
       f.map((c) =>
         c.uid === uid
           ? {
               ...c,
-              x: clamp(clientX - r.left - CW / 2, 0, r.width - CW),
-              y: clamp(clientY - r.top - CH / 2, 0, r.height - CH),
+              x: clamp(w.x - CW / 2, 0, w.w - CW),
+              y: clamp(w.y - CH / 2, 0, w.h - CH),
               z: nextZ(),
             }
           : c,
@@ -135,35 +148,43 @@ export function Playmat({ rows, lang }: { rows: Row[]; lang: 'pt' | 'en' }) {
             </>
           )}
         </span>
+        <span className="zoom-ctl">
+          <button type="button" onClick={() => setZoom((z) => clampZoom(z - 0.15))} title="Menos zoom">−</button>
+          <button type="button" onClick={() => setZoom(1)} title="100%">{Math.round(zoom * 100)}%</button>
+          <button type="button" onClick={() => setZoom((z) => clampZoom(z + 0.15))} title="Mais zoom">+</button>
+        </span>
       </div>
 
       <div className="field" ref={fieldRef}>
-        <button
-          type="button"
-          className="deck-pile"
-          onClick={() => draw(1)}
-          title="Comprar carta"
-          disabled={library.length === 0}
-        >
-          <span className="deck-count">{library.length}</span>
-          <span className="deck-label">grimório</span>
-        </button>
-        {field.map((c) => (
-          <DragCard
-            key={c.uid}
-            src={c.card.img}
-            alt={c.card.name}
-            style={{ left: c.x, top: c.y, zIndex: c.z, position: 'absolute' }}
-            onDragEnd={(x, y) => moveOnField(c.uid, x, y)}
-            onDoubleClick={() =>
-              setField((f) => {
-                setHand((h) => [...h, { uid: c.uid, card: c.card }]);
-                return f.filter((x) => x.uid !== c.uid);
-              })
-            }
-          />
-        ))}
-        {field.length === 0 && <p className="field-hint">arraste cartas da mão pra cá</p>}
+        <div className="field-inner" style={{ '--z': zoom } as React.CSSProperties}>
+          <button
+            type="button"
+            className="deck-pile"
+            onClick={() => draw(1)}
+            title="Comprar carta"
+            disabled={library.length === 0}
+          >
+            <span className="deck-count">{library.length}</span>
+            <span className="deck-label">grimório</span>
+          </button>
+          {field.map((c) => (
+            <DragCard
+              key={c.uid}
+              src={c.card.img}
+              alt={c.card.name}
+              scale={zoom}
+              style={{ left: c.x, top: c.y, zIndex: c.z, position: 'absolute' }}
+              onDragEnd={(x, y) => moveOnField(c.uid, x, y)}
+              onDoubleClick={() =>
+                setField((f) => {
+                  setHand((h) => [...h, { uid: c.uid, card: c.card }]);
+                  return f.filter((x) => x.uid !== c.uid);
+                })
+              }
+            />
+          ))}
+          {field.length === 0 && <p className="field-hint">arraste cartas da mão pra cá</p>}
+        </div>
       </div>
 
       <div className="hand">
@@ -192,6 +213,7 @@ function DragCard({
   alt,
   label,
   style,
+  scale = 1,
   onDragEnd,
   onDoubleClick,
 }: {
@@ -199,6 +221,7 @@ function DragCard({
   alt: string;
   label?: string;
   style?: React.CSSProperties;
+  scale?: number;
   onDragEnd: (clientX: number, clientY: number) => void;
   onDoubleClick?: () => void;
 }) {
@@ -212,7 +235,9 @@ function DragCard({
         width: CW,
         height: CH,
         ...style,
-        transform: drag ? `translate(${drag.dx}px, ${drag.dy}px)` : undefined,
+        // o elemento está dentro de um container com scale(scale); dividir mantém
+        // o card colado no cursor durante o arraste
+        transform: drag ? `translate(${drag.dx / scale}px, ${drag.dy / scale}px)` : undefined,
       }}
       onPointerDown={(e) => {
         (e.target as HTMLElement).setPointerCapture(e.pointerId);

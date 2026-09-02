@@ -117,8 +117,14 @@ main {
 .legal-badge { padding: 8px; border-radius: 6px; font-weight: 700; text-align: center; }
 .legal-badge.ok { background: rgba(70, 167, 88, 0.15); color: var(--ok); }
 .legal-badge.no { background: rgba(229, 72, 77, 0.15); color: var(--bad); }
-.stat-line { margin-top: 8px; }
+.stat-line { margin-top: 8px; color: var(--muted); }
 .stat-line .hint { color: var(--bad); }
+
+.counts { width: 100%; border-collapse: collapse; margin: 10px 0 4px; font-size: 13px; }
+.counts th { text-align: left; font-weight: 400; color: var(--muted); padding: 2px 0; }
+.counts td { text-align: right; font-variant-numeric: tabular-nums; padding: 2px 0; }
+.counts tr:first-child th, .counts tr:first-child td { font-weight: 700; color: var(--text); }
+.counts .hint { color: var(--bad); }
 
 .curve { display: flex; gap: 4px; align-items: flex-end; height: 90px; }
 .curve-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }

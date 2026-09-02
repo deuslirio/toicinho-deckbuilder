@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { IndexedCard } from '../lib/types';
-import { checkDeck, banlistMeta, TOICINHO } from '../formats/toicinho';
+import { checkDeck, banlistMeta, TOICINHO, effectiveRarity } from '../formats/toicinho';
 import { COLORS, COLOR_LABEL, countPips, type ColorKey } from '../lib/mana';
 
 interface Row {
@@ -51,6 +51,22 @@ export function DeckSummary({ rows }: { rows: Row[] }) {
   const maxDevotion = Math.max(1, ...COLORS.map((c) => devotion[c]));
   const maxCurve = Math.max(1, ...curve);
 
+  // Contagem de cópias no main por raridade + lendárias (linha transversal).
+  const counts = useMemo(() => {
+    const c = { common: 0, uncommon: 0, rare: 0, mythic: 0, special: 0, legendary: 0 };
+    for (const r of rows) {
+      if (r.board !== 'main') continue;
+      const rar = effectiveRarity(r.card);
+      if (rar === 'common') c.common += r.qty;
+      else if (rar === 'uncommon') c.uncommon += r.qty;
+      else if (rar === 'rare') c.rare += r.qty;
+      else if (rar === 'mythic') c.mythic += r.qty;
+      else c.special += r.qty;
+      if (r.card.legendary) c.legendary += r.qty;
+    }
+    return c;
+  }, [rows]);
+
   return (
     <aside className="summary">
       <div className={report.legal ? 'legal-badge ok' : 'legal-badge no'}>
@@ -58,12 +74,37 @@ export function DeckSummary({ rows }: { rows: Row[] }) {
       </div>
 
       <div className="stat-line">
-        <strong>{report.counts.main}</strong> main · <strong>{report.counts.side}</strong> side ·{' '}
-        <strong>{report.counts.unique}</strong> únicas
-        {report.counts.main < TOICINHO.deckMin && (
-          <span className="hint"> (mín. {TOICINHO.deckMin})</span>
-        )}
+        <strong>{report.counts.unique}</strong> cartas únicas
       </div>
+
+      <table className="counts">
+        <tbody>
+          <tr>
+            <th>Total</th>
+            <td>
+              {report.counts.main}
+              {report.counts.main < TOICINHO.deckMin && (
+                <span className="hint"> / {TOICINHO.deckMin}</span>
+              )}
+            </td>
+          </tr>
+          <tr><th>Comuns</th><td>{counts.common}</td></tr>
+          <tr><th>Incomuns</th><td>{counts.uncommon}</td></tr>
+          <tr><th>Raras</th><td>{counts.rare}</td></tr>
+          <tr><th>Míticas</th><td>{counts.mythic}</td></tr>
+          {counts.special > 0 && <tr><th>Especiais</th><td>{counts.special}</td></tr>}
+          <tr><th>Lendárias</th><td>{counts.legendary}</td></tr>
+          <tr>
+            <th>Sideboard</th>
+            <td>
+              {report.counts.side}
+              {report.counts.side > TOICINHO.sideboardMax && (
+                <span className="hint"> / {TOICINHO.sideboardMax}</span>
+              )}
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
       <h3>Curva de mana</h3>
       <div className="curve">

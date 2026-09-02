@@ -105,7 +105,8 @@ main {
 .row { display: flex; align-items: center; gap: 6px; padding: 3px 0; }
 .row.bad .row-name { color: var(--bad); }
 .row input { width: 44px; text-align: center; padding: 3px; }
-.row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-thumb { border-radius: 3px; flex: none; object-fit: cover; object-position: top; }
+.row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: help; }
 .row-meta { color: var(--muted); font-size: 12px; }
 .row button { padding: 2px 6px; }
 .empty { color: var(--muted); font-style: italic; padding: 4px 0; }
@@ -139,3 +140,12 @@ main {
 .textio textarea { width: 100%; font-family: ui-monospace, monospace; }
 
 footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+
+.card-preview {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  background: var(--panel-2);
+}

@@ -1,5 +1,6 @@
 import type { IndexedCard, Board } from '../lib/types';
 import { copyLimit, isBanned } from '../formats/toicinho';
+import { useCardPreview } from './CardPreview';
 
 interface Row {
   card: IndexedCard;
@@ -18,6 +19,7 @@ interface Props {
 
 export function DeckColumn({ title, board, rows, total, lang, onQty, onMove }: Props) {
   const other: Board = board === 'main' ? 'side' : 'main';
+  const preview = useCardPreview();
   return (
     <section className="deck-col">
       <h2>
@@ -36,7 +38,12 @@ export function DeckColumn({ title, board, rows, total, lang, onQty, onMove }: P
                 value={qty}
                 onChange={(e) => onQty(card.id, board, Math.max(0, Number(e.target.value)))}
               />
-              <span className="row-name">{name}</span>
+              {card.img && (
+                <img className="row-thumb" src={card.img} alt="" loading="lazy" width={24} height={33} />
+              )}
+              <span className="row-name" {...preview.bind(card.img)}>
+                {name}
+              </span>
               <span className="row-meta">{card.manaCost}</span>
               <button type="button" title={`Mover para ${other}`} onClick={() => onMove(card.id, board, other)}>
                 ⇄

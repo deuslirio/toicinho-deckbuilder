@@ -6,6 +6,7 @@ import { parseDeckText, deckToText } from './lib/decktext';
 import { CardSearch } from './components/CardSearch';
 import { DeckColumn } from './components/DeckColumn';
 import { DeckSummary } from './components/DeckSummary';
+import { CardPreviewProvider } from './components/CardPreview';
 import './index.css';
 
 type Index = Awaited<ReturnType<typeof loadCardIndex>>;
@@ -48,6 +49,7 @@ export default function App() {
   if (!index) return <div className="loading">Carregando índice de cartas…</div>;
 
   return (
+    <CardPreviewProvider>
     <div className="app">
       <header>
         <h1>Toicinho Deckbuilder</h1>
@@ -131,6 +133,7 @@ export default function App() {
         .
       </footer>
     </div>
+    </CardPreviewProvider>
   );
 }
 

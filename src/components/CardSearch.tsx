@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { IndexedCard } from '../lib/types';
 import { queryCards, loadCardIndex } from '../data/cards';
 import { isBanned, copyLimit, effectiveRarity } from '../formats/toicinho';
+import { useCardPreview } from './CardPreview';
 
 type Index = Awaited<ReturnType<typeof loadCardIndex>>;
 
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function CardSearch({ index, onAdd }: Props) {
+  const preview = useCardPreview();
   const [q, setQ] = useState('');
   const [lang, setLang] = useState<'pt' | 'en'>('pt');
   const [debounced, setDebounced] = useState('');
@@ -54,7 +56,11 @@ export function CardSearch({ index, onAdd }: Props) {
           const primary = lang === 'pt' && card.namePt ? card.namePt : card.name;
           const secondary = lang === 'pt' && card.namePt ? card.name : card.namePt;
           return (
-            <li key={card.id} className={banned || outOfPool ? 'result illegal' : 'result'}>
+            <li
+              key={card.id}
+              className={banned || outOfPool ? 'result illegal' : 'result'}
+              {...preview.bind(card.img)}
+            >
               {card.img && (
                 <img src={card.img} alt="" loading="lazy" width={46} height={64} />
               )}

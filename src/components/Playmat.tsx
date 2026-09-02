@@ -6,7 +6,8 @@ type Row = { card: IndexedCard; qty: number; board: 'main' | 'side' };
 type FieldCard = CardInstance & { x: number; y: number; z: number };
 
 const CW = 150;
-const CH = Math.round((CW * 680) / 488); // 209 — proporção da carta
+const CH = Math.round((CW * 680) / 488); // proporção da carta de Magic
+const HAND_MULT = 1.2; // a mão começa um pouco maior que o campo
 const OPENING = 7;
 
 export function Playmat({ rows, lang }: { rows: Row[]; lang: 'pt' | 'en' }) {
@@ -187,13 +188,15 @@ export function Playmat({ rows, lang }: { rows: Row[]; lang: 'pt' | 'en' }) {
         </div>
       </div>
 
-      <div className="hand">
+      <div className="hand" style={{ height: CH * HAND_MULT * zoom + 22 }}>
         {hand.map((c) => (
           <DragCard
             key={c.uid}
             src={c.card.img}
             alt={handName(c.card)}
             label={handName(c.card)}
+            w={CW * HAND_MULT * zoom}
+            h={CH * HAND_MULT * zoom}
             onDragEnd={(x, y) => dropFromHand(c.uid, x, y)}
             onDoubleClick={() => bottomFromHand(c.uid)}
           />
@@ -214,6 +217,8 @@ function DragCard({
   label,
   style,
   scale = 1,
+  w = CW,
+  h = CH,
   onDragEnd,
   onDoubleClick,
 }: {
@@ -222,6 +227,8 @@ function DragCard({
   label?: string;
   style?: React.CSSProperties;
   scale?: number;
+  w?: number;
+  h?: number;
   onDragEnd: (clientX: number, clientY: number) => void;
   onDoubleClick?: () => void;
 }) {
@@ -232,8 +239,8 @@ function DragCard({
     <div
       className={`pm-card${drag ? ' dragging' : ''}`}
       style={{
-        width: CW,
-        height: CH,
+        width: w,
+        height: h,
         ...style,
         // o elemento está dentro de um container com scale(scale); dividir mantém
         // o card colado no cursor durante o arraste

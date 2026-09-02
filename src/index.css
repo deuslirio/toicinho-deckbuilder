@@ -249,7 +249,7 @@ footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--line);
 .deck-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
 .hand {
-  flex: none; height: 232px;
+  flex: none;
   display: flex; gap: 6px; align-items: flex-end;
   overflow-x: auto; overflow-y: hidden;
   padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel);

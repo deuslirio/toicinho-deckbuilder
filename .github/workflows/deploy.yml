@@ -1,0 +1,61 @@
+name: Build & deploy (GitHub Pages)
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 6 * * 1' # toda segunda 06:17 UTC — regenera o índice de cartas
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Índice de cartas (PT + EN). Baixa o bulk do Scryfall, filtra e gera
+      # public/data/cards.json. O bulk (~400 MB) fica só no runner.
+      # O cron semanal serve pra pegar sets novos.
+      - name: Gerar índice de cartas
+        run: npm run data:cards
+
+      # A banlist NÃO é gerada aqui. src/formats/toicinho.banlist.json é commitado.
+      # Quando a Bacon Arcano atualizar a lista: rode `npm run data:banlist` local,
+      # revise toicinho.banlist.report.json e commite o JSON.
+
+      - name: Build do site
+        env:
+          # GitHub Pages de projeto serve em /<repo>/. Para user/org page ou
+          # domínio próprio, troque para "/".
+          VITE_BASE: /${{ github.event.repository.name }}/
+        run: npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

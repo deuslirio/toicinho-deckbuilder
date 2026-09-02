@@ -1,0 +1,90 @@
+{
+  "generatedAt": "2026-09-02T14:00:25.599Z",
+  "totalCandidates": 695,
+  "resolved": 695,
+  "unresolved": [],
+  "typoCorrections": [
+    {
+      "from": "Timewalk",
+      "to": "Time Walk",
+      "color": "U"
+    },
+    {
+      "from": "Evendo, Waking Heaven",
+      "to": "Evendo, Waking Haven",
+      "color": "L"
+    },
+    {
+      "from": "Jetmir's Gardens",
+      "to": "Jetmir's Garden",
+      "color": "L"
+    },
+    {
+      "from": "SiIent Clearing",
+      "to": "Silent Clearing",
+      "color": "L"
+    }
+  ],
+  "doubleFacedResolved": [
+    {
+      "from": "Ajani, Nacatl Pariah",
+      "to": "Ajani, Nacatl Pariah // Ajani, Nacatl Avenger"
+    },
+    {
+      "from": "Delver of Secrets",
+      "to": "Delver of Secrets // Insectile Aberration"
+    },
+    {
+      "from": "Sheoldred",
+      "to": "Sheoldred // The True Scriptures"
+    },
+    {
+      "from": "Virtue of Persistence",
+      "to": "Virtue of Persistence // Locthwain Scorn"
+    },
+    {
+      "from": "Fable of the Mirror-Breaker",
+      "to": "Fable of the Mirror-Breaker // Reflection of Kiki-Jiki"
+    },
+    {
+      "from": "Barkchannel Pathway",
+      "to": "Barkchannel Pathway // Tidechannel Pathway"
+    },
+    {
+      "from": "Blightstep Pathway",
+      "to": "Blightstep Pathway // Searstep Pathway"
+    },
+    {
+      "from": "Branchloft Pathway",
+      "to": "Branchloft Pathway // Boulderloft Pathway"
+    },
+    {
+      "from": "Brightclimb Pathway",
+      "to": "Brightclimb Pathway // Grimclimb Pathway"
+    },
+    {
+      "from": "Clearwater Pathway",
+      "to": "Clearwater Pathway // Murkwater Pathway"
+    },
+    {
+      "from": "Cragcrown Pathway",
+      "to": "Cragcrown Pathway // Timbercrown Pathway"
+    },
+    {
+      "from": "Darkbore Pathway",
+      "to": "Darkbore Pathway // Slitherbore Pathway"
+    },
+    {
+      "from": "Hengegate Pathway",
+      "to": "Hengegate Pathway // Mistgate Pathway"
+    },
+    {
+      "from": "Needleverge Pathway",
+      "to": "Needleverge Pathway // Pillarverge Pathway"
+    },
+    {
+      "from": "Riverglide Pathway",
+      "to": "Riverglide Pathway // Lavaglide Pathway"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "toicinho-deckbuilder",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Deckbuilder estático (GitHub Pages) para o formato Toicinho da Bacon Arcano — busca de cartas em PT/EN e validação da banlist própria.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "data:cards": "node scripts/build-card-index.mjs",
+    "data:banlist": "node scripts/build-banlist.mjs",
+    "data": "npm run data:cards && npm run data:banlist"
+  },
+  "dependencies": {
+    "minisearch": "^7.1.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3"
+  }
+}

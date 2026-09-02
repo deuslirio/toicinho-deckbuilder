@@ -1,0 +1,6 @@
+{
+  "_comment": "Ajuste manual de raridade quando a 'impressão mais recente' do Scryfall distorce (Secret Lair, edições Clue, Mystery Booster...). Chave = nome em inglês, valor = common|uncommon|rare|mythic. A organização decide.",
+  "overrides": {
+    "Lightning Bolt": "common"
+  }
+}

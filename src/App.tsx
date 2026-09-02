@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadCardIndex } from './data/cards';
 import type { IndexedCard } from './lib/types';
-import { useDeck, readDeckFromUrl, shareUrl } from './store/deck';
+import { useDeck, readDeckFromUrl, shareUrl, copyText } from './store/deck';
 import { parseDeckText, deckToText } from './lib/decktext';
 import { CardSearch } from './components/CardSearch';
 import { DeckColumn } from './components/DeckColumn';
@@ -18,6 +18,14 @@ export default function App() {
   const [lang, setLang] = useState<'pt' | 'en'>('en');
   const toggleLang = () => setLang((l) => (l === 'pt' ? 'en' : 'pt'));
   const [showText, setShowText] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<number>();
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 2200);
+  };
 
   const { deck, add, setQty, move, setName, clear, replace } = useDeck();
 
@@ -69,10 +77,10 @@ export default function App() {
           </button>
           <button
             type="button"
-            onClick={() => {
+            onClick={async () => {
               const url = shareUrl(deck);
-              navigator.clipboard?.writeText(url);
               history.replaceState(null, '', url);
+              showToast((await copyText(url)) ? 'Link copiado' : 'Link na barra de endereço');
             }}
           >
             Copiar link
@@ -139,6 +147,7 @@ export default function App() {
         </a>
         .
       </footer>
+      {toast && <div className="toast" role="status">{toast}</div>}
     </div>
     </CardPreviewProvider>
   );

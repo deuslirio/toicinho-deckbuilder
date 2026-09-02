@@ -5,8 +5,8 @@ import { buildLibrary, type CardInstance } from '../lib/goldfish';
 type Row = { card: IndexedCard; qty: number; board: 'main' | 'side' };
 type FieldCard = CardInstance & { x: number; y: number; z: number };
 
-const CW = 120;
-const CH = 167;
+const CW = 150;
+const CH = Math.round((CW * 680) / 488); // 209 — proporção da carta
 const OPENING = 7;
 
 export function Playmat({ rows, lang }: { rows: Row[]; lang: 'pt' | 'en' }) {

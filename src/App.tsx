@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadCardIndex } from './data/cards';
 import type { IndexedCard } from './lib/types';
-import { useDeck, readDeckFromUrl, shareUrl, copyText } from './store/deck';
+import { useDeck, readDeckFromUrl, copyText, encodeDeck } from './store/deck';
 import { parseDeckText, deckToText } from './lib/decktext';
 import { CardSearch } from './components/CardSearch';
 import { DeckColumn } from './components/DeckColumn';
@@ -54,11 +54,26 @@ export default function App() {
   }, []);
 
   // deck compartilhado por URL tem prioridade no primeiro load
+  const hydrated = useRef(false);
   useEffect(() => {
     const shared = readDeckFromUrl();
     if (shared) replace(shared);
+    hydrated.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // mantém a URL (#d=deck&v=aba) sempre em dia, sem poluir o histórico
+  useEffect(() => {
+    if (!hydrated.current) return;
+    const t = window.setTimeout(() => {
+      const parts: string[] = [];
+      if (deck.main.length || deck.side.length) parts.push(`d=${encodeDeck(deck)}`);
+      if (view !== 'editor') parts.push(`v=${view}`);
+      const next = parts.length ? `#${parts.join('&')}` : window.location.pathname;
+      history.replaceState(null, '', next);
+    }, 200);
+    return () => window.clearTimeout(t);
+  }, [deck, view]);
 
   const rows = useMemo(() => {
     if (!index) return [];
@@ -110,9 +125,9 @@ export default function App() {
           <button
             type="button"
             onClick={async () => {
-              const url = shareUrl(deck);
-              history.replaceState(null, '', url);
-              showToast((await copyText(url)) ? 'Link copiado' : 'Link na barra de endereço');
+              showToast(
+                (await copyText(window.location.href)) ? 'Link copiado' : 'Link na barra de endereço',
+              );
             }}
           >
             Copiar link

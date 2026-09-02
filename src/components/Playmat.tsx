@@ -1,0 +1,241 @@
+import { useCallback, useMemo, useRef, useState } from 'react';
+import type { IndexedCard } from '../lib/types';
+import { buildLibrary, type CardInstance } from '../lib/goldfish';
+
+type Row = { card: IndexedCard; qty: number; board: 'main' | 'side' };
+type FieldCard = CardInstance & { x: number; y: number; z: number };
+
+const CW = 120;
+const CH = 167;
+const OPENING = 7;
+
+export function Playmat({ rows, lang }: { rows: Row[]; lang: 'pt' | 'en' }) {
+  const [library, setLibrary] = useState<CardInstance[]>([]);
+  const [hand, setHand] = useState<CardInstance[]>([]);
+  const [field, setField] = useState<FieldCard[]>([]);
+  const [drawn, setDrawn] = useState(0);
+  const [mulligans, setMulligans] = useState(0);
+  const [started, setStarted] = useState(false);
+
+  const fieldRef = useRef<HTMLDivElement>(null);
+  const zRef = useRef(1);
+  const nextZ = () => (zRef.current += 1);
+
+  const deckSize = useMemo(
+    () => rows.filter((r) => r.board === 'main').reduce((s, r) => s + r.qty, 0),
+    [rows],
+  );
+
+  const reset = useCallback(
+    (mull: number) => {
+      const lib = buildLibrary(rows);
+      setHand(lib.slice(0, OPENING));
+      setLibrary(lib.slice(OPENING));
+      setField([]);
+      setDrawn(0);
+      setMulligans(mull);
+      setStarted(true);
+    },
+    [rows],
+  );
+
+  const draw = (n = 1) => {
+    setLibrary((lib) => {
+      const take = lib.slice(0, n);
+      if (take.length) {
+        setHand((h) => [...h, ...take]);
+        setDrawn((d) => d + take.length);
+      }
+      return lib.slice(take.length);
+    });
+  };
+
+  const handName = (c: IndexedCard) => (lang === 'pt' && c.namePt ? c.namePt : c.name);
+
+  // hand -> field (ou -> topo da mão) conforme onde soltou
+  const dropFromHand = (uid: string, clientX: number, clientY: number) => {
+    const r = fieldRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const inField = clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+    if (!inField) return; // soltou fora: volta pra mão (no-op)
+    setHand((h) => {
+      const inst = h.find((c) => c.uid === uid);
+      if (!inst) return h;
+      const x = clamp(clientX - r.left - CW / 2, 0, r.width - CW);
+      const y = clamp(clientY - r.top - CH / 2, 0, r.height - CH);
+      setField((f) => [...f, { ...inst, x, y, z: nextZ() }]);
+      return h.filter((c) => c.uid !== uid);
+    });
+  };
+
+  const moveOnField = (uid: string, clientX: number, clientY: number) => {
+    const r = fieldRef.current?.getBoundingClientRect();
+    if (!r) return;
+    // soltou abaixo do campo → volta pra mão
+    if (clientY > r.bottom) {
+      setField((f) => {
+        const inst = f.find((c) => c.uid === uid);
+        if (inst) setHand((h) => [...h, { uid: inst.uid, card: inst.card }]);
+        return f.filter((c) => c.uid !== uid);
+      });
+      return;
+    }
+    setField((f) =>
+      f.map((c) =>
+        c.uid === uid
+          ? {
+              ...c,
+              x: clamp(clientX - r.left - CW / 2, 0, r.width - CW),
+              y: clamp(clientY - r.top - CH / 2, 0, r.height - CH),
+              z: nextZ(),
+            }
+          : c,
+      ),
+    );
+  };
+
+  const bottomFromHand = (uid: string) =>
+    setHand((h) => {
+      const inst = h.find((c) => c.uid === uid);
+      if (inst) setLibrary((lib) => [...lib, inst]);
+      return h.filter((c) => c.uid !== uid);
+    });
+
+  if (!started) {
+    return (
+      <div className="playmat empty-mat">
+        <p>Embaralha o main ({deckSize} cartas) e compra uma mão de {OPENING}.</p>
+        <button type="button" className="big" onClick={() => reset(0)} disabled={deckSize < OPENING}>
+          {deckSize < OPENING ? 'Deck pequeno demais' : 'Comprar mão inicial'}
+        </button>
+      </div>
+    );
+  }
+
+  const mullTarget = OPENING - mulligans;
+
+  return (
+    <div className="playmat">
+      <div className="playmat-bar">
+        <button type="button" onClick={() => reset(0)}>Nova mão</button>
+        <button type="button" onClick={() => reset(mulligans + 1)} disabled={mulligans >= OPENING - 1}>
+          Mulligan
+        </button>
+        <button type="button" onClick={() => draw(1)} disabled={library.length === 0}>
+          Comprar
+        </button>
+        <span className="pm-info">
+          Grimório <strong>{library.length}</strong> · compras <strong>{drawn}</strong>
+          {mulligans > 0 && (
+            <>
+              {' '}· mulligan <strong>{mulligans}</strong>
+              {hand.length > mullTarget && (
+                <span className="hint"> — devolva {hand.length - mullTarget} ao fundo</span>
+              )}
+            </>
+          )}
+        </span>
+      </div>
+
+      <div className="field" ref={fieldRef}>
+        <button
+          type="button"
+          className="deck-pile"
+          onClick={() => draw(1)}
+          title="Comprar carta"
+          disabled={library.length === 0}
+        >
+          <span className="deck-count">{library.length}</span>
+          <span className="deck-label">grimório</span>
+        </button>
+        {field.map((c) => (
+          <DragCard
+            key={c.uid}
+            src={c.card.img}
+            alt={c.card.name}
+            style={{ left: c.x, top: c.y, zIndex: c.z, position: 'absolute' }}
+            onDragEnd={(x, y) => moveOnField(c.uid, x, y)}
+            onDoubleClick={() =>
+              setField((f) => {
+                setHand((h) => [...h, { uid: c.uid, card: c.card }]);
+                return f.filter((x) => x.uid !== c.uid);
+              })
+            }
+          />
+        ))}
+        {field.length === 0 && <p className="field-hint">arraste cartas da mão pra cá</p>}
+      </div>
+
+      <div className="hand">
+        {hand.map((c) => (
+          <DragCard
+            key={c.uid}
+            src={c.card.img}
+            alt={handName(c.card)}
+            label={handName(c.card)}
+            onDragEnd={(x, y) => dropFromHand(c.uid, x, y)}
+            onDoubleClick={() => bottomFromHand(c.uid)}
+          />
+        ))}
+        {hand.length === 0 && <p className="field-hint">mão vazia</p>}
+      </div>
+    </div>
+  );
+}
+
+function clamp(v: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+function DragCard({
+  src,
+  alt,
+  label,
+  style,
+  onDragEnd,
+  onDoubleClick,
+}: {
+  src: string | null;
+  alt: string;
+  label?: string;
+  style?: React.CSSProperties;
+  onDragEnd: (clientX: number, clientY: number) => void;
+  onDoubleClick?: () => void;
+}) {
+  const [drag, setDrag] = useState<{ dx: number; dy: number } | null>(null);
+  const start = useRef<{ x: number; y: number } | null>(null);
+
+  return (
+    <div
+      className={`pm-card${drag ? ' dragging' : ''}`}
+      style={{
+        width: CW,
+        height: CH,
+        ...style,
+        transform: drag ? `translate(${drag.dx}px, ${drag.dy}px)` : undefined,
+      }}
+      onPointerDown={(e) => {
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        start.current = { x: e.clientX, y: e.clientY };
+        setDrag({ dx: 0, dy: 0 });
+      }}
+      onPointerMove={(e) => {
+        if (!start.current) return;
+        setDrag({ dx: e.clientX - start.current.x, dy: e.clientY - start.current.y });
+      }}
+      onPointerUp={(e) => {
+        if (start.current) {
+          const moved =
+            Math.abs(e.clientX - start.current.x) + Math.abs(e.clientY - start.current.y);
+          if (moved > 4) onDragEnd(e.clientX, e.clientY);
+        }
+        start.current = null;
+        setDrag(null);
+      }}
+      onDoubleClick={onDoubleClick}
+    >
+      {src ? <img src={src} alt={alt} draggable={false} /> : <span className="pm-fallback">{alt}</span>}
+      {label && <span className="pm-label">{label}</span>}
+    </div>
+  );
+}

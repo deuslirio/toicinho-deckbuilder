@@ -7,6 +7,7 @@ import { CardSearch } from './components/CardSearch';
 import { DeckColumn } from './components/DeckColumn';
 import { DeckSummary } from './components/DeckSummary';
 import { CardPreviewProvider } from './components/CardPreview';
+import { Playmat } from './components/Playmat';
 import './index.css';
 
 type Index = Awaited<ReturnType<typeof loadCardIndex>>;
@@ -18,6 +19,7 @@ export default function App() {
   const [lang, setLang] = useState<'pt' | 'en'>('en');
   const toggleLang = () => setLang((l) => (l === 'pt' ? 'en' : 'pt'));
   const [showText, setShowText] = useState(false);
+  const [view, setView] = useState<'editor' | 'mesa'>('editor');
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number>();
 
@@ -69,6 +71,22 @@ export default function App() {
           onChange={(e) => setName(e.target.value)}
         />
         <div className="header-actions">
+          <div className="view-switch">
+            <button
+              type="button"
+              className={view === 'editor' ? 'on' : ''}
+              onClick={() => setView('editor')}
+            >
+              Editor
+            </button>
+            <button
+              type="button"
+              className={view === 'mesa' ? 'on' : ''}
+              onClick={() => setView('mesa')}
+            >
+              Mesa
+            </button>
+          </div>
           <button type="button" onClick={toggleLang}>
             Idioma: {lang.toUpperCase()}
           </button>
@@ -104,37 +122,41 @@ export default function App() {
         />
       )}
 
-      <main>
-        <CardSearch
-          index={index}
-          lang={lang}
-          onToggleLang={toggleLang}
-          onAdd={(card, board) => add(card.id, board)}
-        />
-
-        <div className="deck">
-          <DeckColumn
-            title="Main"
-            board="main"
-            rows={mainRows}
-            total={mainRows.reduce((a, r) => a + r.qty, 0)}
+      {view === 'mesa' ? (
+        <Playmat rows={rows} lang={lang} />
+      ) : (
+        <main>
+          <CardSearch
+            index={index}
             lang={lang}
-            onQty={setQty}
-            onMove={move}
+            onToggleLang={toggleLang}
+            onAdd={(card, board) => add(card.id, board)}
           />
-          <DeckColumn
-            title="Sideboard"
-            board="side"
-            rows={sideRows}
-            total={sideRows.reduce((a, r) => a + r.qty, 0)}
-            lang={lang}
-            onQty={setQty}
-            onMove={move}
-          />
-        </div>
 
-        <DeckSummary rows={rows} />
-      </main>
+          <div className="deck">
+            <DeckColumn
+              title="Main"
+              board="main"
+              rows={mainRows}
+              total={mainRows.reduce((a, r) => a + r.qty, 0)}
+              lang={lang}
+              onQty={setQty}
+              onMove={move}
+            />
+            <DeckColumn
+              title="Sideboard"
+              board="side"
+              rows={sideRows}
+              total={sideRows.reduce((a, r) => a + r.qty, 0)}
+              lang={lang}
+              onQty={setQty}
+              onMove={move}
+            />
+          </div>
+
+          <DeckSummary rows={rows} />
+        </main>
+      )}
 
       <footer>
         Índice gerado em {index.meta.generatedAt} · {index.meta.count} cartas · dados do{' '}

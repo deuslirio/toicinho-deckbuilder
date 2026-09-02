@@ -134,20 +134,31 @@ async function main() {
 
     let e = acc.get(card.oracle_id);
     if (!e) {
-      e = { meta: null, metaRank: -Infinity, pt: null, ptDate: '', _img: null };
+      e = { meta: null, metaRank: -Infinity, pt: null, ptDate: '', img: null, imgRank: -Infinity };
       acc.set(card.oracle_id, e);
     }
     const date = card.released_at || '';
+    const ts = Date.parse(date || '1993-01-01');
+    const isEn = card.lang === 'en';
 
-    // Metadados vêm da "melhor" impressão: categoria do set primeiro (peso 1e13,
-    // acima de qualquer timestamp), e dentro da categoria a mais recente.
-    const rank = printingScore(card) * 1e13 + Date.parse(date || '1993-01-01');
+    // Metadados vêm da "melhor" impressão: categoria do set primeiro, depois a mais
+    // recente, e em impressões do mesmo set o inglês desempata.
+    const rank = printingScore(card) * 1e16 + ts + (isEn ? 1 : 0);
     if (!e.meta || rank > e.metaRank) {
       e.meta = card;
       e.metaRank = rank;
-      if (smallImage(card)) e._img = smallImage(card);
     }
-    if (!e._img && smallImage(card)) e._img = smallImage(card);
+
+    // Imagem: inglês antes de tudo, depois set "normal" antes de promo/Secret Lair,
+    // depois a mais recente. Só cai pra outra língua se nunca houve arte em inglês.
+    const small = smallImage(card);
+    if (small) {
+      const imgRank = (isEn ? 1 : 0) * 1e18 + printingScore(card) * 1e16 + ts;
+      if (imgRank > e.imgRank) {
+        e.img = small;
+        e.imgRank = imgRank;
+      }
+    }
 
     const pt = pickPortugueseName(card);
     if (pt && date >= e.ptDate) {
@@ -158,7 +169,7 @@ async function main() {
   console.log(`  ${seen} objetos lidos, ${acc.size} cartas únicas`);
 
   const cards = [];
-  for (const { meta, pt, _img } of acc.values()) {
+  for (const { meta, pt, img } of acc.values()) {
     const oracleText = [meta.oracle_text, ...(meta.card_faces?.map((f) => f.oracle_text) || [])]
       .filter(Boolean).join('\n');
     const typeLine = meta.type_line ?? meta.card_faces?.[0]?.type_line ?? '';
@@ -175,7 +186,7 @@ async function main() {
       colors: meta.colors ?? meta.card_faces?.[0]?.colors ?? [],
       colorIdentity: meta.color_identity ?? [],
       legendary: /Legendary/.test(typeLine),
-      img: _img ?? null,
+      img: img ?? null,
       poolLegal: (meta.released_at || '') >= EARLIEST_RELEASE && !INVALID_TEXT.test(oracleText),
     });
   }

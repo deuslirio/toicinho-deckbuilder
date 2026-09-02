@@ -14,7 +14,9 @@ type Index = Awaited<ReturnType<typeof loadCardIndex>>;
 export default function App() {
   const [index, setIndex] = useState<Index | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lang, setLang] = useState<'pt' | 'en'>('pt');
+  // Idioma de exibição — padrão inglês. A busca aceita PT e EN independente disso.
+  const [lang, setLang] = useState<'pt' | 'en'>('en');
+  const toggleLang = () => setLang((l) => (l === 'pt' ? 'en' : 'pt'));
   const [showText, setShowText] = useState(false);
 
   const { deck, add, setQty, move, setName, clear, replace } = useDeck();
@@ -59,7 +61,7 @@ export default function App() {
           onChange={(e) => setName(e.target.value)}
         />
         <div className="header-actions">
-          <button type="button" onClick={() => setLang((l) => (l === 'pt' ? 'en' : 'pt'))}>
+          <button type="button" onClick={toggleLang}>
             Idioma: {lang.toUpperCase()}
           </button>
           <button type="button" onClick={() => setShowText((v) => !v)}>
@@ -95,7 +97,12 @@ export default function App() {
       )}
 
       <main>
-        <CardSearch index={index} onAdd={(card, board) => add(card.id, board)} />
+        <CardSearch
+          index={index}
+          lang={lang}
+          onToggleLang={toggleLang}
+          onAdd={(card, board) => add(card.id, board)}
+        />
 
         <div className="deck">
           <DeckColumn

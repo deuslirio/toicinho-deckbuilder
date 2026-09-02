@@ -8,13 +8,14 @@ type Index = Awaited<ReturnType<typeof loadCardIndex>>;
 
 interface Props {
   index: Index;
+  lang: 'pt' | 'en';
+  onToggleLang: () => void;
   onAdd: (card: IndexedCard, board: 'main' | 'side') => void;
 }
 
-export function CardSearch({ index, onAdd }: Props) {
+export function CardSearch({ index, lang, onToggleLang, onAdd }: Props) {
   const preview = useCardPreview();
   const [q, setQ] = useState('');
-  const [lang, setLang] = useState<'pt' | 'en'>('pt');
   const [debounced, setDebounced] = useState('');
   const timer = useRef<number>();
 
@@ -41,8 +42,8 @@ export function CardSearch({ index, onAdd }: Props) {
         <button
           type="button"
           className="lang-toggle"
-          onClick={() => setLang((l) => (l === 'pt' ? 'en' : 'pt'))}
-          title="Idioma exibido"
+          onClick={onToggleLang}
+          title="Idioma exibido (a busca aceita PT e EN sempre)"
         >
           {lang === 'pt' ? 'PT' : 'EN'}
         </button>

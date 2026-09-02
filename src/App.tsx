@@ -21,6 +21,8 @@ export default function App() {
   const toggleLang = () => setLang((l) => (l === 'pt' ? 'en' : 'pt'));
   const [showText, setShowText] = useState(false);
   const [view, setViewState] = useState<'editor' | 'visual' | 'mesa'>(() => {
+    const fromUrl = window.location.hash.match(/[#&]v=(editor|visual|mesa)/)?.[1];
+    if (fromUrl) return fromUrl as 'editor' | 'visual' | 'mesa';
     try {
       const v = localStorage.getItem('toicinho-view');
       return v === 'visual' || v === 'mesa' ? v : 'editor';

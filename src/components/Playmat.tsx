@@ -5,17 +5,24 @@ import { buildLibrary, type CardInstance } from '../lib/goldfish';
 type Row = { card: IndexedCard; qty: number; board: 'main' | 'side' };
 type FieldCard = CardInstance & { x: number; y: number; z: number };
 
+interface Game {
+  library: CardInstance[];
+  hand: CardInstance[];
+  field: FieldCard[];
+  drawn: number;
+  mulligans: number;
+}
+const EMPTY: Game = { library: [], hand: [], field: [], drawn: 0, mulligans: 0 };
+
 const CW = 150;
 const CH = Math.round((CW * 680) / 488); // proporção da carta de Magic
 const HAND_MULT = 1.2; // a mão começa um pouco maior que o campo
 const OPENING = 7;
 
 export function Playmat({ rows, lang }: { rows: Row[]; lang: 'pt' | 'en' }) {
-  const [library, setLibrary] = useState<CardInstance[]>([]);
-  const [hand, setHand] = useState<CardInstance[]>([]);
-  const [field, setField] = useState<FieldCard[]>([]);
-  const [drawn, setDrawn] = useState(0);
-  const [mulligans, setMulligans] = useState(0);
+  // library/hand/field/... num único estado -> todas as mutações são updaters puros
+  // (evita cartas duplicadas com o double-invoke do StrictMode)
+  const [game, setGame] = useState<Game>(EMPTY);
   const [started, setStarted] = useState(false);
   const [zoom, setZoom] = useState(1);
 
@@ -25,13 +32,15 @@ export function Playmat({ rows, lang }: { rows: Row[]; lang: 'pt' | 'en' }) {
 
   const clampZoom = (v: number) => Math.max(0.4, Math.min(1.8, Math.round(v * 100) / 100));
 
-  // client px -> coordenadas "de mundo" do campo (que independem do zoom)
-  const toWorld = (clientX: number, clientY: number, r: DOMRect) => ({
-    x: (clientX - r.left) / zoom,
-    y: (clientY - r.top) / zoom,
-    w: r.width / zoom,
-    h: r.height / zoom,
-  });
+  // client px -> coordenadas "de mundo" do campo (independem do zoom)
+  const worldPos = (clientX: number, clientY: number, r: DOMRect) => {
+    const w = r.width / zoom;
+    const h = r.height / zoom;
+    return {
+      x: clamp((clientX - r.left) / zoom - CW / 2, 0, w - CW),
+      y: clamp((clientY - r.top) / zoom - CH / 2, 0, h - CH),
+    };
+  };
 
   const deckSize = useMemo(
     () => rows.filter((r) => r.board === 'main').reduce((s, r) => s + r.qty, 0),
@@ -41,79 +50,83 @@ export function Playmat({ rows, lang }: { rows: Row[]; lang: 'pt' | 'en' }) {
   const reset = useCallback(
     (mull: number) => {
       const lib = buildLibrary(rows);
-      setHand(lib.slice(0, OPENING));
-      setLibrary(lib.slice(OPENING));
-      setField([]);
-      setDrawn(0);
-      setMulligans(mull);
+      setGame({
+        library: lib.slice(OPENING),
+        hand: lib.slice(0, OPENING),
+        field: [],
+        drawn: 0,
+        mulligans: mull,
+      });
       setStarted(true);
     },
     [rows],
   );
 
-  const draw = (n = 1) => {
-    setLibrary((lib) => {
-      const take = lib.slice(0, n);
-      if (take.length) {
-        setHand((h) => [...h, ...take]);
-        setDrawn((d) => d + take.length);
-      }
-      return lib.slice(take.length);
+  const draw = (n = 1) =>
+    setGame((g) => {
+      const take = g.library.slice(0, n);
+      if (!take.length) return g;
+      return {
+        ...g,
+        library: g.library.slice(take.length),
+        hand: [...g.hand, ...take],
+        drawn: g.drawn + take.length,
+      };
     });
-  };
 
-  const handName = (c: IndexedCard) => (lang === 'pt' && c.namePt ? c.namePt : c.name);
+  const bottomFromHand = (uid: string) =>
+    setGame((g) => {
+      const inst = g.hand.find((c) => c.uid === uid);
+      if (!inst) return g;
+      return { ...g, hand: g.hand.filter((c) => c.uid !== uid), library: [...g.library, inst] };
+    });
 
-  // hand -> field (ou -> topo da mão) conforme onde soltou
+  const fieldToHand = (uid: string) =>
+    setGame((g) => {
+      const inst = g.field.find((c) => c.uid === uid);
+      if (!inst) return g;
+      return {
+        ...g,
+        field: g.field.filter((c) => c.uid !== uid),
+        hand: [...g.hand, { uid: inst.uid, card: inst.card }],
+      };
+    });
+
   const dropFromHand = (uid: string, clientX: number, clientY: number) => {
     const r = fieldRef.current?.getBoundingClientRect();
     if (!r) return;
-    const inField = clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+    const inField =
+      clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
     if (!inField) return; // soltou fora: volta pra mão (no-op)
-    setHand((h) => {
-      const inst = h.find((c) => c.uid === uid);
-      if (!inst) return h;
-      const w = toWorld(clientX, clientY, r);
-      const x = clamp(w.x - CW / 2, 0, w.w - CW);
-      const y = clamp(w.y - CH / 2, 0, w.h - CH);
-      setField((f) => [...f, { ...inst, x, y, z: nextZ() }]);
-      return h.filter((c) => c.uid !== uid);
+    const { x, y } = worldPos(clientX, clientY, r);
+    const z = nextZ();
+    setGame((g) => {
+      const inst = g.hand.find((c) => c.uid === uid);
+      if (!inst) return g;
+      return {
+        ...g,
+        hand: g.hand.filter((c) => c.uid !== uid),
+        field: [...g.field, { ...inst, x, y, z }],
+      };
     });
   };
 
   const moveOnField = (uid: string, clientX: number, clientY: number) => {
     const r = fieldRef.current?.getBoundingClientRect();
     if (!r) return;
-    // soltou abaixo do campo → volta pra mão
     if (clientY > r.bottom) {
-      setField((f) => {
-        const inst = f.find((c) => c.uid === uid);
-        if (inst) setHand((h) => [...h, { uid: inst.uid, card: inst.card }]);
-        return f.filter((c) => c.uid !== uid);
-      });
+      fieldToHand(uid);
       return;
     }
-    const w = toWorld(clientX, clientY, r);
-    setField((f) =>
-      f.map((c) =>
-        c.uid === uid
-          ? {
-              ...c,
-              x: clamp(w.x - CW / 2, 0, w.w - CW),
-              y: clamp(w.y - CH / 2, 0, w.h - CH),
-              z: nextZ(),
-            }
-          : c,
-      ),
-    );
+    const { x, y } = worldPos(clientX, clientY, r);
+    const z = nextZ();
+    setGame((g) => ({
+      ...g,
+      field: g.field.map((c) => (c.uid === uid ? { ...c, x, y, z } : c)),
+    }));
   };
 
-  const bottomFromHand = (uid: string) =>
-    setHand((h) => {
-      const inst = h.find((c) => c.uid === uid);
-      if (inst) setLibrary((lib) => [...lib, inst]);
-      return h.filter((c) => c.uid !== uid);
-    });
+  const handName = (c: IndexedCard) => (lang === 'pt' && c.namePt ? c.namePt : c.name);
 
   if (!started) {
     return (
@@ -126,6 +139,7 @@ export function Playmat({ rows, lang }: { rows: Row[]; lang: 'pt' | 'en' }) {
     );
   }
 
+  const { library, hand, field, drawn, mulligans } = game;
   const mullTarget = OPENING - mulligans;
 
   return (
@@ -176,12 +190,7 @@ export function Playmat({ rows, lang }: { rows: Row[]; lang: 'pt' | 'en' }) {
               scale={zoom}
               style={{ left: c.x, top: c.y, zIndex: c.z, position: 'absolute' }}
               onDragEnd={(x, y) => moveOnField(c.uid, x, y)}
-              onDoubleClick={() =>
-                setField((f) => {
-                  setHand((h) => [...h, { uid: c.uid, card: c.card }]);
-                  return f.filter((x) => x.uid !== c.uid);
-                })
-              }
+              onDoubleClick={() => fieldToHand(c.uid)}
             />
           ))}
           {field.length === 0 && <p className="field-hint">arraste cartas da mão pra cá</p>}
@@ -242,8 +251,8 @@ function DragCard({
         width: w,
         height: h,
         ...style,
-        // o elemento está dentro de um container com scale(scale); dividir mantém
-        // o card colado no cursor durante o arraste
+        // o elemento pode estar dentro de um container com scale(scale); dividir
+        // mantém o card colado no cursor durante o arraste
         transform: drag ? `translate(${drag.dx / scale}px, ${drag.dy / scale}px)` : undefined,
       }}
       onPointerDown={(e) => {

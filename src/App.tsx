@@ -20,7 +20,22 @@ export default function App() {
   const [lang, setLang] = useState<'pt' | 'en'>('en');
   const toggleLang = () => setLang((l) => (l === 'pt' ? 'en' : 'pt'));
   const [showText, setShowText] = useState(false);
-  const [view, setView] = useState<'editor' | 'visual' | 'mesa'>('editor');
+  const [view, setViewState] = useState<'editor' | 'visual' | 'mesa'>(() => {
+    try {
+      const v = localStorage.getItem('toicinho-view');
+      return v === 'visual' || v === 'mesa' ? v : 'editor';
+    } catch {
+      return 'editor';
+    }
+  });
+  const setView = (v: 'editor' | 'visual' | 'mesa') => {
+    setViewState(v);
+    try {
+      localStorage.setItem('toicinho-view', v);
+    } catch {
+      /* ignore */
+    }
+  };
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number>();
 

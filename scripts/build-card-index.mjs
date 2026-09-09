@@ -37,7 +37,10 @@ const SCRYFALL_HEADERS = {
 
 // Toicinho: cartas válidas da Quarta Edição (1995-04-24) em diante.
 const EARLIEST_RELEASE = '1995-04-24';
-const INVALID_TEXT = /\b(commander|command zone)\b/i;
+// menção a Commander / Zona de Comando na caixa de regras -> inválida.
+// "\bcommander" sem \b final pega "commander", "commanders", "commander's",
+// "commanders'" (e não "commandeer", que não contém "commander").
+const INVALID_TEXT = /\bcommander|\bcommand zone\b/i;
 
 const SKIP_LAYOUTS = new Set([
   'token', 'double_faced_token', 'emblem', 'art_series', 'vanguard',

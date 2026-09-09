@@ -9,7 +9,17 @@ import { DeckSummary } from './components/DeckSummary';
 import { CardPreviewProvider } from './components/CardPreview';
 import { Playmat } from './components/Playmat';
 import { DeckVisual } from './components/DeckVisual';
+import { Suggestions } from './components/Suggestions';
 import './index.css';
+
+type View = 'editor' | 'visual' | 'mesa' | 'sugestoes';
+const VIEWS: View[] = ['editor', 'visual', 'mesa', 'sugestoes'];
+const VIEW_LABEL: Record<View, string> = {
+  editor: 'Editor',
+  visual: 'Visual',
+  mesa: 'Mesa',
+  sugestoes: 'Sugestões',
+};
 
 type Index = Awaited<ReturnType<typeof loadCardIndex>>;
 
@@ -20,17 +30,17 @@ export default function App() {
   const [lang, setLang] = useState<'pt' | 'en'>('en');
   const toggleLang = () => setLang((l) => (l === 'pt' ? 'en' : 'pt'));
   const [showText, setShowText] = useState(false);
-  const [view, setViewState] = useState<'editor' | 'visual' | 'mesa'>(() => {
-    const fromUrl = window.location.hash.match(/[#&]v=(editor|visual|mesa)/)?.[1];
-    if (fromUrl) return fromUrl as 'editor' | 'visual' | 'mesa';
+  const [view, setViewState] = useState<View>(() => {
+    const fromUrl = window.location.hash.match(/[#&]v=(editor|visual|mesa|sugestoes)/)?.[1];
+    if (fromUrl) return fromUrl as View;
     try {
-      const v = localStorage.getItem('toicinho-view');
-      return v === 'visual' || v === 'mesa' ? v : 'editor';
+      const v = localStorage.getItem('toicinho-view') as View | null;
+      return v && VIEWS.includes(v) ? v : 'editor';
     } catch {
       return 'editor';
     }
   });
-  const setView = (v: 'editor' | 'visual' | 'mesa') => {
+  const setView = (v: View) => {
     setViewState(v);
     try {
       localStorage.setItem('toicinho-view', v);
@@ -105,14 +115,14 @@ export default function App() {
         />
         <div className="header-actions">
           <div className="view-switch">
-            {(['editor', 'visual', 'mesa'] as const).map((v) => (
+            {VIEWS.map((v) => (
               <button
                 key={v}
                 type="button"
                 className={view === v ? 'on' : ''}
                 onClick={() => setView(v)}
               >
-                {v === 'editor' ? 'Editor' : v === 'visual' ? 'Visual' : 'Mesa'}
+                {VIEW_LABEL[v]}
               </button>
             ))}
           </div>
@@ -155,6 +165,8 @@ export default function App() {
         <Playmat rows={rows} lang={lang} />
       ) : view === 'visual' ? (
         <DeckVisual rows={rows} lang={lang} />
+      ) : view === 'sugestoes' ? (
+        <Suggestions index={index} rows={rows} lang={lang} onAdd={(card) => add(card.id, 'main')} />
       ) : (
         <main>
           <CardSearch

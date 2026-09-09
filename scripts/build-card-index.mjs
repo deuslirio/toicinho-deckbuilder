@@ -134,12 +134,24 @@ async function main() {
 
     let e = acc.get(card.oracle_id);
     if (!e) {
-      e = { meta: null, metaRank: -Infinity, pt: null, ptDate: '', img: null, imgRank: -Infinity };
+      e = {
+        meta: null, metaRank: -Infinity, pt: null, ptDate: '',
+        img: null, imgRank: -Infinity, minUsd: null, minUsdFoil: null,
+      };
       acc.set(card.oracle_id, e);
     }
     const date = card.released_at || '';
     const ts = Date.parse(date || '1993-01-01');
     const isEn = card.lang === 'en';
+
+    // Preço: menor USD (não-foil) entre TODAS as impressões; foil só como último recurso.
+    if (card.games?.includes('paper')) {
+      const usd = card.prices?.usd ? parseFloat(card.prices.usd) : null;
+      const usdFoil = card.prices?.usd_foil ? parseFloat(card.prices.usd_foil) : null;
+      if (usd != null && Number.isFinite(usd)) e.minUsd = e.minUsd == null ? usd : Math.min(e.minUsd, usd);
+      if (usdFoil != null && Number.isFinite(usdFoil))
+        e.minUsdFoil = e.minUsdFoil == null ? usdFoil : Math.min(e.minUsdFoil, usdFoil);
+    }
 
     // Metadados vêm da "melhor" impressão: categoria do set primeiro, depois a mais
     // recente, e em impressões do mesmo set o inglês desempata.
@@ -169,10 +181,11 @@ async function main() {
   console.log(`  ${seen} objetos lidos, ${acc.size} cartas únicas`);
 
   const cards = [];
-  for (const { meta, pt, img } of acc.values()) {
+  for (const { meta, pt, img, minUsd, minUsdFoil } of acc.values()) {
     const oracleText = [meta.oracle_text, ...(meta.card_faces?.map((f) => f.oracle_text) || [])]
       .filter(Boolean).join('\n');
     const typeLine = meta.type_line ?? meta.card_faces?.[0]?.type_line ?? '';
+    const price = minUsd ?? minUsdFoil ?? null;
     cards.push({
       id: meta.oracle_id,
       name: pickEnglishName(meta),
@@ -187,6 +200,7 @@ async function main() {
       colorIdentity: meta.color_identity ?? [],
       legendary: /Legendary/.test(typeLine),
       img: img ?? null,
+      priceUsd: price == null ? null : Math.round(price * 100) / 100,
       poolLegal: (meta.released_at || '') >= EARLIEST_RELEASE && !INVALID_TEXT.test(oracleText),
     });
   }
@@ -205,9 +219,12 @@ async function main() {
 
   const withPt = cards.filter((c) => c.namePt).length;
   const inPool = cards.filter((c) => c.poolLegal).length;
+  const withPrice = cards.filter((c) => c.priceUsd != null).length;
   const { size } = await stat(OUT);
   console.log(`\nGravado ${OUT} (${(size / 1e6).toFixed(1)} MB)`);
-  console.log(`  ${cards.length} cartas | ${withPt} com nome PT | ${inPool} elegíveis no pool`);
+  console.log(
+    `  ${cards.length} cartas | ${withPt} com nome PT | ${inPool} no pool | ${withPrice} com preço`,
+  );
 }
 
 main().catch((err) => {

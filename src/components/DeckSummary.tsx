@@ -51,6 +51,22 @@ export function DeckSummary({ rows }: { rows: Row[] }) {
   const maxDevotion = Math.max(1, ...COLORS.map((c) => devotion[c]));
   const maxCurve = Math.max(1, ...curve);
 
+  // Preço: menor USD por carta × quantidade. Main e side separados; cartas sem preço à parte.
+  const price = useMemo(() => {
+    let main = 0;
+    let side = 0;
+    let missing = 0;
+    for (const r of rows) {
+      if (r.card.priceUsd == null) {
+        missing += r.qty;
+        continue;
+      }
+      if (r.board === 'main') main += r.card.priceUsd * r.qty;
+      else side += r.card.priceUsd * r.qty;
+    }
+    return { main, side, total: main + side, missing };
+  }, [rows]);
+
   // Contagem de cópias no main por raridade + lendárias (linha transversal).
   const counts = useMemo(() => {
     const c = { common: 0, uncommon: 0, rare: 0, mythic: 0, special: 0, legendary: 0 };
@@ -105,6 +121,30 @@ export function DeckSummary({ rows }: { rows: Row[] }) {
           </tr>
         </tbody>
       </table>
+
+      <table className="counts price-table">
+        <tbody>
+          <tr>
+            <th>Preço (USD)</th>
+            <td>${price.total.toFixed(2)}</td>
+          </tr>
+          {price.side > 0 && (
+            <tr className="sub">
+              <th>main / side</th>
+              <td>
+                ${price.main.toFixed(2)} / ${price.side.toFixed(2)}
+              </td>
+            </tr>
+          )}
+          {price.missing > 0 && (
+            <tr className="sub">
+              <th>sem preço</th>
+              <td>{price.missing} carta(s)</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      <p className="price-note">menor preço não-foil, dados do Scryfall</p>
 
       <h3>Curva de mana</h3>
       <div className="curve">

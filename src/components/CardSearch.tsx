@@ -76,6 +76,11 @@ export function CardSearch({ index, lang, onToggleLang, onAdd }: Props) {
                   <span className={`rarity r-${effectiveRarity(card)}`} title={`impressão: ${card.set.toUpperCase()}`}>
                     {effectiveRarity(card)} ({card.set.toUpperCase()})
                   </span>
+                  {card.priceUsd != null && (
+                    <span className="price" title="menor preço não-foil (Scryfall)">
+                      ${card.priceUsd.toFixed(2)}
+                    </span>
+                  )}
                   {banned && <span className="tag banned">banida</span>}
                   {!banned && outOfPool && <span className="tag pool">fora do pool</span>}
                   {!banned && !outOfPool && (

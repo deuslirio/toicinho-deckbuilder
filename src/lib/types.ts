@@ -16,6 +16,8 @@ export interface IndexedCard {
   legendary: boolean;
   /** URL da imagem "small" do Scryfall; troque /small/ por /normal/ para a grande. */
   img: string | null;
+  /** Menor preço USD (não-foil) entre todas as impressões; null se sem preço. */
+  priceUsd: number | null;
   /** true se está no pool do Toicinho (4ª Edição+, sem menção a Commander/Draft). */
   poolLegal: boolean;
 }

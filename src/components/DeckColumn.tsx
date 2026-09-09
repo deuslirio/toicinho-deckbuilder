@@ -20,10 +20,11 @@ interface Props {
 export function DeckColumn({ title, board, rows, total, lang, onQty, onMove }: Props) {
   const other: Board = board === 'main' ? 'side' : 'main';
   const preview = useCardPreview();
+  const priced = rows.reduce((s, r) => s + (r.card.priceUsd ?? 0) * r.qty, 0);
   return (
     <section className="deck-col">
       <h2>
-        {title} <span className="count">{total}</span>
+        {title} <span className="count">{total}{priced > 0 && ` · $${priced.toFixed(2)}`}</span>
       </h2>
       <ul>
         {rows.map(({ card, qty }) => {
@@ -41,10 +42,15 @@ export function DeckColumn({ title, board, rows, total, lang, onQty, onMove }: P
               {card.img && (
                 <img className="row-thumb" src={card.img} alt="" loading="lazy" width={24} height={33} />
               )}
-              <span className="row-name" {...preview.bind(card.img)}>
+              <span className="row-name" {...preview.bind(card.img, card.priceUsd)}>
                 {name}
               </span>
               <span className="row-meta">{card.manaCost}</span>
+              {card.priceUsd != null && (
+                <span className="row-price" title={`$${card.priceUsd.toFixed(2)} / un.`}>
+                  ${(card.priceUsd * qty).toFixed(2)}
+                </span>
+              )}
               <button type="button" title={`Mover para ${other}`} onClick={() => onMove(card.id, board, other)}>
                 ⇄
               </button>

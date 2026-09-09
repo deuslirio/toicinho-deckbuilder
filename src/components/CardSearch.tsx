@@ -60,7 +60,7 @@ export function CardSearch({ index, lang, onToggleLang, onAdd }: Props) {
             <li
               key={card.id}
               className={banned || outOfPool ? 'result illegal' : 'result'}
-              {...preview.bind(card.img)}
+              {...preview.bind(card.img, card.priceUsd)}
             >
               {card.img && (
                 <img src={card.img} alt="" loading="lazy" width={46} height={64} />

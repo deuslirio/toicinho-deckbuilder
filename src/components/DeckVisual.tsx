@@ -94,7 +94,7 @@ function VisualPile({ pile, lang }: { pile: Pile; lang: 'pt' | 'en' }) {
               key={k}
               className={`vcard${bad ? ' bad' : ''}`}
               style={{ top: i * step, zIndex: i, width: COL_W, height: CARD_H }}
-              {...preview.bind(card.img)}
+              {...preview.bind(card.img, card.priceUsd)}
             >
               {card.img ? (
                 <img src={card.img} alt={name} loading="lazy" draggable={false} />

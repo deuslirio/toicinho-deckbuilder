@@ -8,7 +8,13 @@ export interface SynergyEntry {
   incl: number; // taxa de inclusão quando jogável (0–1)
 }
 
+export interface Combo {
+  cards: string[]; // combo completo (inclui a carta consultada)
+  decks: number; // popularidade (nº de decks de Commander)
+}
+
 const CACHE_PREFIX = 'edh:v1:';
+const COMBO_PREFIX = 'edhc:v1:';
 const TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const LIFT_MIN = 1.5; // abaixo disso é "carta boa", não sinergia
 
@@ -26,21 +32,21 @@ export function edhrecSlug(name: string): string {
     .replace(/\s+/g, '-');
 }
 
-function readCache(slug: string): SynergyEntry[] | null | undefined {
+function readCache<T>(key: string): T | null | undefined {
   try {
-    const raw = localStorage.getItem(CACHE_PREFIX + slug);
+    const raw = localStorage.getItem(key);
     if (!raw) return undefined;
     const { t, d } = JSON.parse(raw);
     if (Date.now() - t > TTL_MS) return undefined;
-    return d; // pode ser null (cache negativo de 404)
+    return d; // pode ser null (cache negativo)
   } catch {
     return undefined;
   }
 }
 
-function writeCache(slug: string, d: SynergyEntry[] | null) {
+function writeCache(key: string, d: unknown) {
   try {
-    localStorage.setItem(CACHE_PREFIX + slug, JSON.stringify({ t: Date.now(), d }));
+    localStorage.setItem(key, JSON.stringify({ t: Date.now(), d }));
   } catch {
     /* quota — ignora */
   }
@@ -49,7 +55,7 @@ function writeCache(slug: string, d: SynergyEntry[] | null) {
 /** Busca (com cache) a lista de cartas sinérgicas de uma carta. */
 export async function fetchSynergy(name: string): Promise<SynergyEntry[]> {
   const slug = edhrecSlug(name);
-  const cached = readCache(slug);
+  const cached = readCache<SynergyEntry[]>(CACHE_PREFIX + slug);
   if (cached !== undefined) return cached ?? [];
 
   let entries: SynergyEntry[] | null = null;
@@ -78,6 +84,44 @@ export async function fetchSynergy(name: string): Promise<SynergyEntry[]> {
   } catch {
     entries = null; // rede/CORS — não cacheia negativo
   }
-  if (entries) writeCache(slug, entries);
+  if (entries) writeCache(CACHE_PREFIX + slug, entries);
   return entries ?? [];
+}
+
+/**
+ * Combos que incluem esta carta (endpoint /pages/combos/<slug>.json).
+ * O cardviews de cada combo lista as OUTRAS peças; a carta consultada é implícita.
+ */
+export async function fetchCombos(name: string): Promise<Combo[]> {
+  const slug = edhrecSlug(name);
+  const cached = readCache<Combo[]>(COMBO_PREFIX + slug);
+  if (cached !== undefined) return cached ?? [];
+
+  let combos: Combo[] | null = null;
+  try {
+    const res = await fetch(`https://json.edhrec.com/pages/combos/${slug}.json`);
+    const ct = res.headers.get('content-type') ?? '';
+    if (res.ok && ct.includes('json')) {
+      const json = await res.json();
+      const lists = json?.container?.json_dict?.cardlists ?? [];
+      combos = [];
+      for (const list of lists) {
+        const others = (list.cardviews ?? [])
+          .map((cv: { name?: string }) => cv.name)
+          .filter((n: unknown): n is string => typeof n === 'string');
+        if (!others.length || others.length > 3) continue; // combos de 2 a 4 cartas
+        const decks = parseInt(
+          (list.header?.match(/\(([\d,]+)\s+decks?\)/)?.[1] ?? '0').replace(/,/g, ''),
+          10,
+        );
+        combos.push({ cards: [name, ...others], decks: Number.isFinite(decks) ? decks : 0 });
+      }
+    } else {
+      combos = []; // sem combos pra essa carta
+    }
+  } catch {
+    combos = null; // rede/CORS
+  }
+  if (combos) writeCache(COMBO_PREFIX + slug, combos);
+  return combos ?? [];
 }

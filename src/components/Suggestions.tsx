@@ -19,6 +19,7 @@ interface Agg {
   card: IndexedCard;
   count: number; // quantas cartas do deck recomendam
   liftSum: number;
+  maxLift: number; // maior lift entre as recomendações (sinergia de pico)
   sources: string[];
 }
 
@@ -102,11 +103,12 @@ export function Suggestions({
           if (!card) continue;
           let a = map.get(card.id);
           if (!a) {
-            a = { card, count: 0, liftSum: 0, sources: [] };
+            a = { card, count: 0, liftSum: 0, maxLift: 0, sources: [] };
             map.set(card.id, a);
           }
           a.count += 1;
           a.liftSum += e.lift;
+          a.maxLift = Math.max(a.maxLift, e.lift);
           if (a.sources.length < 4) a.sources.push(displayName(src, lang));
         }
         for (const c of combos) {
@@ -124,22 +126,23 @@ export function Suggestions({
   }, [sourceKey]);
 
   // Filtra/ordena — re-roda a cada mudança no deck (ex.: você adicionou uma sugestão).
-  const aggs = useMemo(
-    () =>
-      raw
-        .filter(
-          (a) =>
-            a.count >= 2 && // recomendada por >= 2 cartas do deck (corta o ruído de nicho)
-            !inDeck.has(a.card.id) &&
-            a.card.poolLegal &&
-            !isBanned(a.card) &&
-            !GENERIC_RAMP.test(a.card.name) &&
-            a.card.colorIdentity.every((c) => deckColors.has(c)),
-        )
-        .sort((x, y) => y.count - x.count || y.liftSum - x.liftSum)
-        .slice(0, MAX_RESULTS),
-    [raw, inDeck, deckColors],
-  );
+  const aggs = useMemo(() => {
+    // "abrangência" (nº de cartas que recomendam) + bônus por sinergia de pico alta
+    // (High Lift Cards do EDHREC) — assim um combo/sinergia forte de uma carta só sobe.
+    const score = (a: Agg) => a.count + (a.maxLift >= 10 ? 1 : 0) + (a.maxLift >= 25 ? 1 : 0);
+    return raw
+      .filter(
+        (a) =>
+          (a.count >= 2 || a.maxLift >= 10) && // 2+ recomendações OU uma sinergia forte
+          !inDeck.has(a.card.id) &&
+          a.card.poolLegal &&
+          !isBanned(a.card) &&
+          !GENERIC_RAMP.test(a.card.name) &&
+          a.card.colorIdentity.every((c) => deckColors.has(c)),
+      )
+      .sort((x, y) => score(y) - score(x) || y.liftSum - x.liftSum)
+      .slice(0, MAX_RESULTS);
+  }, [raw, inDeck, deckColors]);
 
   // Combos: quais você já tem completos e quais estão a 1–2 cartas de fechar.
   const combos = useMemo(() => {
@@ -243,7 +246,10 @@ export function Suggestions({
                 {a.card.img ? <img src={a.card.img} alt={name} loading="lazy" /> : <span>{name}</span>}
               </div>
               <div className="suggest-body">
-                <div className="suggest-name">{name}</div>
+                <div className="suggest-name">
+                  {name}
+                  {a.maxLift >= 15 && <span className="hi-syn" title={`lift ${a.maxLift.toFixed(0)}`}> ★</span>}
+                </div>
                 <div className="suggest-meta">
                   <strong>{a.count}</strong> {a.count === 1 ? 'carta recomenda' : 'cartas recomendam'}
                   {a.card.priceUsd != null && <span className="price"> · ${a.card.priceUsd.toFixed(2)}</span>}

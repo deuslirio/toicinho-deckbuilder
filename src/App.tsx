@@ -64,26 +64,28 @@ export default function App() {
   }, []);
 
   // deck compartilhado por URL tem prioridade no primeiro load
-  const hydrated = useRef(false);
+  const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
     const shared = readDeckFromUrl();
     if (shared) replace(shared);
-    hydrated.current = true;
+    setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // mantém a URL (#d=deck&v=aba) sempre em dia, sem poluir o histórico
+  // mantém a URL (#d=deck) em dia, sem poluir o histórico.
+  // Só o deck e a aba "visual" vão pra URL — Mesa e Sugestões são ferramentas
+  // efêmeras (ficam só no localStorage), não vale deixar a URL gigante por elas.
   useEffect(() => {
-    if (!hydrated.current) return;
+    if (!hydrated) return;
     const t = window.setTimeout(() => {
       const parts: string[] = [];
       if (deck.main.length || deck.side.length) parts.push(`d=${encodeDeck(deck)}`);
-      if (view !== 'editor') parts.push(`v=${view}`);
+      if (view === 'visual') parts.push('v=visual');
       const next = parts.length ? `#${parts.join('&')}` : window.location.pathname;
       history.replaceState(null, '', next);
     }, 200);
     return () => window.clearTimeout(t);
-  }, [deck, view]);
+  }, [deck, view, hydrated]);
 
   const rows = useMemo(() => {
     if (!index) return [];

@@ -246,10 +246,12 @@ export function Suggestions({
                 {a.card.img ? <img src={a.card.img} alt={name} loading="lazy" /> : <span>{name}</span>}
               </div>
               <div className="suggest-body">
-                <div className="suggest-name">
-                  {name}
-                  {a.maxLift >= 15 && <span className="hi-syn" title={`lift ${a.maxLift.toFixed(0)}`}> ★</span>}
-                </div>
+                <div className="suggest-name">{name}</div>
+                {a.maxLift >= 15 && (
+                  <div className="hi-syn" title={`lift ${a.maxLift.toFixed(0)}`}>
+                    sinergia alta
+                  </div>
+                )}
                 <div className="suggest-meta">
                   <strong>{a.count}</strong> {a.count === 1 ? 'carta recomenda' : 'cartas recomendam'}
                   {a.card.priceUsd != null && <span className="price"> · ${a.card.priceUsd.toFixed(2)}</span>}

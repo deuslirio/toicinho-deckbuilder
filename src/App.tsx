@@ -110,7 +110,11 @@ export default function App() {
     <CardPreviewProvider>
     <div className="app">
       <header>
-        <h1>Toicinho Deckbuilder</h1>
+        <h1>
+          <button type="button" className="brand" onClick={() => setView('editor')}>
+            🐷 Toicinho Deckbuilder
+          </button>
+        </h1>
         <input
           className="deck-name"
           value={deck.name}

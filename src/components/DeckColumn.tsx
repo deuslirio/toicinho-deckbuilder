@@ -43,6 +43,11 @@ export function DeckColumn({ title, board, rows, total, lang, onQty, onMove }: P
                 <img className="row-thumb" src={card.img} alt="" loading="lazy" width={24} height={33} />
               )}
               <span className="row-name" {...preview.bind(card.img, card.priceUsd)}>
+                {card.legendary && (
+                  <span className="legendary-mark" title="Lendária">
+                    ★
+                  </span>
+                )}
                 {name}
               </span>
               <span className="row-meta">{card.manaCost}</span>

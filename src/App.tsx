@@ -220,10 +220,27 @@ export default function App() {
   );
 }
 
+// Terrenos primeiro, depois raridade crescente (comum → incomum → rara → mítica).
+const RARITY_ORDER: Record<string, number> = {
+  common: 1,
+  uncommon: 2,
+  rare: 3,
+  mythic: 4,
+  special: 5,
+  bonus: 6,
+};
+
+function isLand(card: IndexedCard) {
+  return /\bLand\b/.test(card.typeLine);
+}
+
 function sortRows(
   a: { card: IndexedCard; qty: number },
   b: { card: IndexedCard; qty: number },
 ) {
+  const groupA = isLand(a.card) ? 0 : (RARITY_ORDER[a.card.rarity] ?? 99);
+  const groupB = isLand(b.card) ? 0 : (RARITY_ORDER[b.card.rarity] ?? 99);
+  if (groupA !== groupB) return groupA - groupB;
   return a.card.cmc - b.card.cmc || a.card.name.localeCompare(b.card.name, 'en');
 }
 

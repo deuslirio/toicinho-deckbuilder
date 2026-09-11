@@ -1,7 +1,8 @@
 // Importação/exportação de decklists em texto ("3 Lightning Bolt" / "3 Raio").
 // Resolve nomes PT ou EN para o oracle_id do índice.
 
-import type { Deck, IndexedCard } from './types';
+import type { Deck, DeckEntry, IndexedCard } from './types';
+import { compareCards } from './sort';
 
 function buildNameMap(cards: IndexedCard[]) {
   const map = new Map<string, string>(); // nome normalizado -> id
@@ -63,10 +64,19 @@ export function deckToText(deck: Deck, byId: Map<string, IndexedCard>, lang: 'pt
     const name = lang === 'pt' && c.namePt ? c.namePt : c.name;
     return `${qty} ${name}`;
   };
-  const out = deck.main.map((e) => line(e.id, e.qty));
+  // mesma ordem do editor (terrenos, depois raridade) — entradas sem carta
+  // no índice ficam no fim, na ordem em que estavam.
+  const sorted = (list: DeckEntry[]) =>
+    [...list].sort((a, b) => {
+      const ca = byId.get(a.id);
+      const cb = byId.get(b.id);
+      if (!ca || !cb) return ca ? -1 : cb ? 1 : 0;
+      return compareCards(ca, cb);
+    });
+  const out = sorted(deck.main).map((e) => line(e.id, e.qty));
   if (deck.side.length) {
     out.push('', 'Sideboard');
-    out.push(...deck.side.map((e) => line(e.id, e.qty)));
+    out.push(...sorted(deck.side).map((e) => line(e.id, e.qty)));
   }
   return out.join('\n');
 }

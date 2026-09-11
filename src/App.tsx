@@ -111,9 +111,19 @@ export default function App() {
     <div className="app">
       <header>
         <h1>
-          <button type="button" className="brand" onClick={() => setView('editor')}>
+          <a
+            className="brand"
+            href={`${window.location.pathname}#v=editor`}
+            onClick={(e) => {
+              // clique com botão do meio / ctrl / cmd / shift abre em nova aba
+              // (comportamento nativo do <a>); só o clique normal navega na SPA.
+              if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+              e.preventDefault();
+              setView('editor');
+            }}
+          >
             🐷 Toicinho Deckbuilder
-          </button>
+          </a>
         </h1>
         <input
           className="deck-name"

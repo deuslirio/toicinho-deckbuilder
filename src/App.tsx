@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadCardIndex } from './data/cards';
 import type { IndexedCard } from './lib/types';
-import { useDeck, readDeckFromUrl, copyText, encodeDeck } from './store/deck';
+import { useDeck, readDeckFromUrl, readShortIdFromUrl, copyText, encodeDeck, decodeDeck } from './store/deck';
 import { parseDeckText, deckToText } from './lib/decktext';
 import { compareCards } from './lib/sort';
+import { createShortLink, resolveShortLink, registerShortLinkView } from './lib/shortlink';
 import { CardSearch } from './components/CardSearch';
 import { DeckColumn } from './components/DeckColumn';
 import { DeckSummary } from './components/DeckSummary';
@@ -51,6 +52,7 @@ export default function App() {
   };
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number>();
+  const [linking, setLinking] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -64,12 +66,37 @@ export default function App() {
     loadCardIndex().then(setIndex).catch((e) => setError(String(e.message ?? e)));
   }, []);
 
-  // deck compartilhado por URL tem prioridade no primeiro load
+  // deck compartilhado por URL tem prioridade no primeiro load.
+  // Link curto (#s=<id>) busca o payload no Firestore antes de tudo;
+  // link longo (#d=...) continua funcionando direto, sem rede.
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
-    const shared = readDeckFromUrl();
-    if (shared) replace(shared);
-    setHydrated(true);
+    let cancelled = false;
+    (async () => {
+      const shortId = readShortIdFromUrl();
+      if (shortId) {
+        try {
+          const encoded = await resolveShortLink(shortId);
+          const shared = encoded ? decodeDeck(encoded) : null;
+          if (cancelled) return;
+          if (shared) {
+            replace(shared);
+            registerShortLinkView(shortId); // estatística — não bloqueia nada
+          } else {
+            showToast('Link curto não encontrado');
+          }
+        } catch {
+          if (!cancelled) showToast('Não consegui abrir o link curto');
+        }
+      } else {
+        const shared = readDeckFromUrl();
+        if (shared) replace(shared);
+      }
+      if (!cancelled) setHydrated(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -105,6 +132,7 @@ export default function App() {
 
   if (error) return <div className="fatal">Erro: {error}</div>;
   if (!index) return <div className="loading">Carregando índice de cartas…</div>;
+  if (!hydrated) return <div className="loading">Abrindo link…</div>;
 
   return (
     <CardPreviewProvider>
@@ -151,13 +179,35 @@ export default function App() {
           </button>
           <button
             type="button"
+            disabled={linking}
             onClick={async () => {
-              showToast(
-                (await copyText(window.location.href)) ? 'Link copiado' : 'Link na barra de endereço',
-              );
+              // deck vazio não vale a pena encurtar — copia a URL como já era.
+              if (!deck.main.length && !deck.side.length) {
+                showToast(
+                  (await copyText(window.location.href)) ? 'Link copiado' : 'Link na barra de endereço',
+                );
+                return;
+              }
+              setLinking(true);
+              try {
+                const id = await createShortLink(encodeDeck(deck));
+                const short = `${window.location.origin}${window.location.pathname}#s=${id}`;
+                showToast(
+                  (await copyText(short)) ? 'Link curto copiado' : 'Link curto na barra de endereço',
+                );
+              } catch {
+                // Firestore fora do ar ou bloqueado — cai pro link longo de sempre.
+                showToast(
+                  (await copyText(window.location.href))
+                    ? 'Link copiado (curto indisponível)'
+                    : 'Link na barra de endereço',
+                );
+              } finally {
+                setLinking(false);
+              }
             }}
           >
-            Copiar link
+            {linking ? 'Gerando link…' : 'Copiar link'}
           </button>
           <button type="button" className="danger" onClick={clear}>
             Limpar

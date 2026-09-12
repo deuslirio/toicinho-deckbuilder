@@ -82,6 +82,12 @@ export function readDeckFromUrl(): Deck | null {
   return m ? decodeDeck(m[1]) : null;
 }
 
+/** Id de link curto na URL (#s=<id>), se houver. */
+export function readShortIdFromUrl(): string | null {
+  const m = window.location.hash.match(/[#&]s=([^&]+)/);
+  return m ? m[1] : null;
+}
+
 export function shareUrl(deck: Deck): string {
   return `${window.location.origin}${window.location.pathname}#d=${encodeDeck(deck)}`;
 }

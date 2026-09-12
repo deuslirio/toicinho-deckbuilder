@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { IndexedCard, Board } from '../lib/types';
 import { copyLimit, isBanned } from '../formats/toicinho';
 import { useCardPreview } from './CardPreview';
@@ -33,12 +34,7 @@ export function DeckColumn({ title, board, rows, total, lang, onQty, onMove }: P
           const name = lang === 'pt' && card.namePt ? card.namePt : card.name;
           return (
             <li key={card.id} className={over || isBanned(card) || !card.poolLegal ? 'row bad' : 'row'}>
-              <input
-                type="number"
-                min={0}
-                value={qty}
-                onChange={(e) => onQty(card.id, board, Math.max(0, Number(e.target.value)))}
-              />
+              <QtyInput qty={qty} onCommit={(n) => onQty(card.id, board, n)} />
               {card.img && (
                 <img className="row-thumb" src={card.img} alt="" loading="lazy" width={24} height={33} />
               )}
@@ -68,5 +64,36 @@ export function DeckColumn({ title, board, rows, total, lang, onQty, onMove }: P
         {rows.length === 0 && <li className="empty">vazio</li>}
       </ul>
     </section>
+  );
+}
+
+/**
+ * Campo de quantidade com estado local próprio: digitar não aplica nada
+ * direto no deck a cada tecla (senão, no celular, apagar pra trocar o
+ * número passa por "vazio" → vira 0 → a carta some no meio da digitação).
+ * Só confirma no blur ou Enter.
+ */
+function QtyInput({ qty, onCommit }: { qty: number; onCommit: (n: number) => void }) {
+  const [text, setText] = useState(String(qty));
+  useEffect(() => setText(String(qty)), [qty]);
+
+  const commit = () => {
+    const n = Math.max(0, Math.floor(Number(text)) || 0);
+    setText(String(n));
+    if (n !== qty) onCommit(n);
+  };
+
+  return (
+    <input
+      type="number"
+      inputMode="numeric"
+      min={0}
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+      }}
+    />
   );
 }

@@ -20,8 +20,12 @@ function randomId(): string {
   return s;
 }
 
-/** Cria um link curto pro payload já codificado (encodeDeck). Retorna o id. */
-export async function createShortLink(encodedDeck: string): Promise<string> {
+/**
+ * Cria um link curto. `encodedDeck` é o payload já codificado (encodeDeck);
+ * `name` vai num campo separado só pra facilitar olhar/listar no console do
+ * Firestore sem precisar decodificar o payload inteiro. Retorna o id.
+ */
+export async function createShortLink(encodedDeck: string, name: string): Promise<string> {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const id = randomId();
     const res = await fetch(`${BASE}/links?documentId=${id}&key=${API_KEY}`, {
@@ -30,6 +34,7 @@ export async function createShortLink(encodedDeck: string): Promise<string> {
       body: JSON.stringify({
         fields: {
           deck: { stringValue: encodedDeck },
+          name: { stringValue: name.slice(0, 200) },
           createdAt: { timestampValue: new Date().toISOString() },
           views: { integerValue: '0' },
         },

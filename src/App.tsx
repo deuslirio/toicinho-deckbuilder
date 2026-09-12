@@ -153,11 +153,15 @@ export default function App() {
             🐷 Toicinho Deckbuilder
           </a>
         </h1>
-        <input
-          className="deck-name"
-          value={deck.name}
-          onChange={(e) => setName(e.target.value)}
-        />
+        <label className="deck-name-field">
+          <span className="deck-name-caption">Nome do deck</span>
+          <input
+            className="deck-name"
+            value={deck.name}
+            onChange={(e) => setName(e.target.value)}
+            aria-label="Nome do deck"
+          />
+        </label>
         <div className="header-actions">
           <div className="view-switch">
             {VIEWS.map((v) => (
@@ -190,7 +194,7 @@ export default function App() {
               }
               setLinking(true);
               try {
-                const id = await createShortLink(encodeDeck(deck));
+                const id = await createShortLink(encodeDeck(deck), deck.name);
                 const short = `${window.location.origin}${window.location.pathname}#s=${id}`;
                 showToast(
                   (await copyText(short)) ? 'Link curto copiado' : 'Link curto na barra de endereço',
@@ -207,7 +211,7 @@ export default function App() {
               }
             }}
           >
-            {linking ? 'Gerando link…' : 'Copiar link'}
+            {linking ? 'Gerando link…' : 'Gerar link curto'}
           </button>
           <button type="button" className="danger" onClick={clear}>
             Limpar

@@ -11,35 +11,53 @@ const API_KEY = 'AIzaSyCvWBN8Hip6SDXe405bjcwExClpnhYo0Gk';
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 const ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-const ID_LEN = 7;
-const MAX_ATTEMPTS = 5;
+const ID_LEN = 10;
+const ID_BYTES = 9; // 72 bits de entropia da hash, sobra pros 10 chars (~59.5 bits) em base62
 
-function randomId(): string {
+/**
+ * Id determinístico (hash do próprio payload): o mesmo deck — mesmas
+ * cartas, mesmo nome — sempre cai no mesmo id, então gerar o link curto
+ * de novo pro mesmo deck reaproveita o documento em vez de criar outro.
+ * 10 chars em base62 é folga bem confortável de colisão pra esse uso.
+ */
+async function contentId(encodedDeck: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(encodedDeck));
+  const bytes = new Uint8Array(digest);
+  let n = 0n;
+  for (let i = 0; i < ID_BYTES; i++) n = (n << 8n) | BigInt(bytes[i]);
   let s = '';
-  for (let i = 0; i < ID_LEN; i++) s += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+  const base = BigInt(ALPHABET.length);
+  for (let i = 0; i < ID_LEN; i++) {
+    s = ALPHABET[Number(n % base)] + s;
+    n /= base;
+  }
   return s;
 }
 
-/** Cria um link curto pro payload já codificado (encodeDeck). Retorna o id. */
-export async function createShortLink(encodedDeck: string): Promise<string> {
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const id = randomId();
-    const res = await fetch(`${BASE}/links?documentId=${id}&key=${API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        fields: {
-          deck: { stringValue: encodedDeck },
-          createdAt: { timestampValue: new Date().toISOString() },
-          views: { integerValue: '0' },
-        },
-      }),
-    });
-    if (res.status === 409) continue; // colisão rara (id já existe) — tenta outro
-    if (!res.ok) throw new Error(`Firestore respondeu ${res.status}`);
-    return id;
-  }
-  throw new Error('Não consegui gerar um link curto único.');
+/**
+ * Cria (ou reaproveita) o link curto pro payload já codificado (encodeDeck).
+ * `name` vai num campo separado só pra facilitar olhar/listar no console do
+ * Firestore sem precisar decodificar o payload inteiro. Retorna o id.
+ */
+export async function createShortLink(encodedDeck: string, name: string): Promise<string> {
+  const id = await contentId(encodedDeck);
+  const res = await fetch(`${BASE}/links?documentId=${id}&key=${API_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fields: {
+        deck: { stringValue: encodedDeck },
+        name: { stringValue: name.slice(0, 200) },
+        createdAt: { timestampValue: new Date().toISOString() },
+        views: { integerValue: '0' },
+      },
+    }),
+  });
+  // 409 = documento já existe — é o mesmo deck (id é hash do payload), então
+  // já está lá do jeito certo. Só reaproveita.
+  if (res.status === 409) return id;
+  if (!res.ok) throw new Error(`Firestore respondeu ${res.status}`);
+  return id;
 }
 
 /** Resolve um id pro payload codificado original, ou null se não existir. */

@@ -4,7 +4,7 @@ import type { IndexedCard } from './lib/types';
 import { useDeck, readDeckFromUrl, readShortIdFromUrl, copyText, encodeDeck, decodeDeck } from './store/deck';
 import { parseDeckText, deckToText } from './lib/decktext';
 import { compareCards } from './lib/sort';
-import { createShortLink, resolveShortLink } from './lib/shortlink';
+import { createShortLink, resolveShortLink, registerShortLinkView } from './lib/shortlink';
 import { CardSearch } from './components/CardSearch';
 import { DeckColumn } from './components/DeckColumn';
 import { DeckSummary } from './components/DeckSummary';
@@ -79,8 +79,12 @@ export default function App() {
           const encoded = await resolveShortLink(shortId);
           const shared = encoded ? decodeDeck(encoded) : null;
           if (cancelled) return;
-          if (shared) replace(shared);
-          else showToast('Link curto não encontrado');
+          if (shared) {
+            replace(shared);
+            registerShortLinkView(shortId); // estatística — não bloqueia nada
+          } else {
+            showToast('Link curto não encontrado');
+          }
         } catch {
           if (!cancelled) showToast('Não consegui abrir o link curto');
         }

@@ -31,6 +31,7 @@ export async function createShortLink(encodedDeck: string): Promise<string> {
         fields: {
           deck: { stringValue: encodedDeck },
           createdAt: { timestampValue: new Date().toISOString() },
+          views: { integerValue: '0' },
         },
       }),
     });
@@ -49,4 +50,28 @@ export async function resolveShortLink(id: string): Promise<string | null> {
   const data = await res.json();
   const value = data.fields?.deck?.stringValue;
   return typeof value === 'string' ? value : null;
+}
+
+/**
+ * Soma +1 no contador de acessos (transform atômico, não precisa ler o
+ * valor atual antes). Fire-and-forget: é só estatística, uma falha aqui
+ * não pode atrapalhar quem tá só tentando abrir o deck.
+ */
+export function registerShortLinkView(id: string): void {
+  fetch(`${BASE}:commit?key=${API_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      writes: [
+        {
+          transform: {
+            document: `projects/${PROJECT_ID}/databases/(default)/documents/links/${id}`,
+            fieldTransforms: [{ fieldPath: 'views', increment: { integerValue: '1' } }],
+          },
+        },
+      ],
+    }),
+  }).catch(() => {
+    /* estatística — não é crítico */
+  });
 }

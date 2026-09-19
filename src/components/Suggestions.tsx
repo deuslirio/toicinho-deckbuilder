@@ -28,17 +28,24 @@ export function Suggestions({
   rows,
   lang,
   onAdd,
+  collectionIds,
+  konamiUnlocked,
 }: {
   index: Index;
   rows: Row[];
   lang: 'pt' | 'en';
   onAdd: (card: IndexedCard) => void;
+  collectionIds: Set<string>;
+  konamiUnlocked: boolean;
 }) {
   const preview = useCardPreview();
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [raw, setRaw] = useState<Agg[]>([]);
   const [rawCombos, setRawCombos] = useState<Combo[]>([]);
   const runId = useRef(0);
+  // Por padrão só sugere carta que você já tem (coleção). O modo "qualquer
+  // carta" (como a página era antes) fica escondido atrás do Konami code.
+  const [showAll, setShowAll] = useState(false);
 
   const byName = useMemo(() => {
     const m = new Map<string, IndexedCard>();
@@ -138,16 +145,20 @@ export function Suggestions({
           a.card.poolLegal &&
           !isBanned(a.card) &&
           !GENERIC_RAMP.test(a.card.name) &&
-          a.card.colorIdentity.every((c) => deckColors.has(c)),
+          a.card.colorIdentity.every((c) => deckColors.has(c)) &&
+          (showAll || collectionIds.has(a.card.id)),
       )
       .sort((x, y) => score(y) - score(x) || y.liftSum - x.liftSum)
       .slice(0, MAX_RESULTS);
-  }, [raw, inDeck, deckColors]);
+  }, [raw, inDeck, deckColors, collectionIds, showAll]);
 
   // Combos: quais você já tem completos e quais estão a 1–2 cartas de fechar.
   const combos = useMemo(() => {
     const legal = (c: IndexedCard) =>
-      c.poolLegal && !isBanned(c) && c.colorIdentity.every((x) => deckColors.has(x));
+      c.poolLegal &&
+      !isBanned(c) &&
+      c.colorIdentity.every((x) => deckColors.has(x)) &&
+      (showAll || collectionIds.has(c.id));
     const out: {
       key: string;
       have: IndexedCard[];
@@ -172,7 +183,7 @@ export function Suggestions({
     return out
       .sort((a, b) => a.missing.length - b.missing.length || b.decks - a.decks)
       .slice(0, 12);
-  }, [rawCombos, inDeck, deckColors, byName]);
+  }, [rawCombos, inDeck, deckColors, byName, collectionIds, showAll]);
 
   if (sources.length === 0) {
     return (
@@ -185,10 +196,32 @@ export function Suggestions({
   return (
     <div className="suggest">
       <p className="suggest-note">
-        Combos que você está perto de fechar e cartas que costumam ser jogadas junto com as do
-        seu deck (dados do EDHREC — meta de Commander). Filtrado pro que é legal no Toicinho e
-        cabe nas suas cores; cartas que mencionam Comandante ficam de fora.
+        {showAll ? (
+          <>
+            Combos que você está perto de fechar e cartas que costumam ser jogadas junto com as
+            do seu deck (dados do EDHREC — meta de Commander), de qualquer lugar — não só da sua
+            coleção. Filtrado pro que é legal no Toicinho e cabe nas suas cores; cartas que
+            mencionam Comandante ficam de fora.
+          </>
+        ) : (
+          <>
+            Combos que você está perto de fechar e cartas que costumam ser jogadas junto com as
+            do seu deck (dados do EDHREC — meta de Commander), <strong>só da sua coleção</strong>.
+            Filtrado pro que é legal no Toicinho e cabe nas suas cores; cartas que mencionam
+            Comandante ficam de fora.
+          </>
+        )}
       </p>
+
+      {konamiUnlocked && (
+        <button
+          type="button"
+          className={showAll ? 'suggest-egg on' : 'suggest-egg'}
+          onClick={() => setShowAll((v) => !v)}
+        >
+          🥚 {showAll ? 'Mostrando tudo — voltar pra coleção' : 'Ver fora da coleção'}
+        </button>
+      )}
 
       {progress && (
         <p className="suggest-progress">
@@ -197,7 +230,13 @@ export function Suggestions({
       )}
 
       {aggs.length === 0 && combos.length === 0 && !progress && (
-        <p className="suggest-progress">Nada de novo — o EDHREC não sugeriu nada legal fora do deck.</p>
+        <p className="suggest-progress">
+          {showAll
+            ? 'Nada de novo — o EDHREC não sugeriu nada legal fora do deck.'
+            : collectionIds.size === 0
+              ? 'Sua coleção está vazia — importe suas cartas no botão "Coleção" pra ver sugestões.'
+              : 'Nada na sua coleção com sinergia forte o bastante ainda.'}
+        </p>
       )}
 
       {combos.length > 0 && (

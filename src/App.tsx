@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadCardIndex } from './data/cards';
 import type { IndexedCard } from './lib/types';
 import { useDeck, readDeckFromUrl, readShortIdFromUrl, copyText, encodeDeck, decodeDeck } from './store/deck';
-import { parseDeckText, deckToText } from './lib/decktext';
+import { parseDeckText, deckToText, parseCollectionText, collectionToText } from './lib/decktext';
 import { compareCards } from './lib/sort';
 import { createShortLink, resolveShortLink, registerShortLinkView } from './lib/shortlink';
 import { CardSearch } from './components/CardSearch';
@@ -25,6 +25,15 @@ const VIEW_LABEL: Record<View, string> = {
 
 type Index = Awaited<ReturnType<typeof loadCardIndex>>;
 
+// Easter egg: destrava o modo clássico de Sugestões (qualquer carta com
+// sinergia, sem exigir que esteja na coleção) — ↑↑↓↓←→←→BA.
+const KONAMI = [
+  'arrowup', 'arrowup', 'arrowdown', 'arrowdown',
+  'arrowleft', 'arrowright', 'arrowleft', 'arrowright',
+  'b', 'a',
+];
+const KONAMI_KEY = 'toicinho-konami';
+
 export default function App() {
   const [index, setIndex] = useState<Index | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +41,14 @@ export default function App() {
   const [lang, setLang] = useState<'pt' | 'en'>('en');
   const toggleLang = () => setLang((l) => (l === 'pt' ? 'en' : 'pt'));
   const [showText, setShowText] = useState(false);
+  const [showCollection, setShowCollection] = useState(false);
+  const [konamiUnlocked, setKonamiUnlocked] = useState(() => {
+    try {
+      return localStorage.getItem(KONAMI_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
   const [view, setViewState] = useState<View>(() => {
     const fromUrl = window.location.hash.match(/[#&]v=(editor|visual|mesa|sugestoes)/)?.[1];
     if (fromUrl) return fromUrl as View;
@@ -60,11 +77,36 @@ export default function App() {
     toastTimer.current = window.setTimeout(() => setToast(null), 2200);
   };
 
-  const { deck, add, setQty, move, setName, clear, replace } = useDeck();
+  const { deck, add, setQty, move, setName, setCollection, clear, replace } = useDeck();
 
   useEffect(() => {
     loadCardIndex().then(setIndex).catch((e) => setError(String(e.message ?? e)));
   }, []);
+
+  // Konami code: destrava o easter egg de Sugestões. Ignora enquanto o foco
+  // está num campo de texto, pra não atrapalhar quem tá digitando "ababab".
+  useEffect(() => {
+    if (konamiUnlocked) return;
+    let pos = 0;
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (document.activeElement?.tagName ?? '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
+      const key = e.key.toLowerCase();
+      pos = key === KONAMI[pos] ? pos + 1 : key === KONAMI[0] ? 1 : 0;
+      if (pos === KONAMI.length) {
+        setKonamiUnlocked(true);
+        try {
+          localStorage.setItem(KONAMI_KEY, '1');
+        } catch {
+          /* ignore */
+        }
+        showToast('🎮 Modo secreto de Sugestões destravado!');
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [konamiUnlocked]);
 
   // deck compartilhado por URL tem prioridade no primeiro load.
   // Link curto (#s=<id>) busca o payload no Firestore antes de tudo;
@@ -80,7 +122,8 @@ export default function App() {
           const shared = encoded ? decodeDeck(encoded) : null;
           if (cancelled) return;
           if (shared) {
-            replace(shared);
+            // a coleção é local, não vem no link — mantém a que já tinha.
+            replace({ ...shared, collection: deck.collection });
             registerShortLinkView(shortId); // estatística — não bloqueia nada
           } else {
             showToast('Link curto não encontrado');
@@ -90,7 +133,7 @@ export default function App() {
         }
       } else {
         const shared = readDeckFromUrl();
-        if (shared) replace(shared);
+        if (shared) replace({ ...shared, collection: deck.collection });
       }
       if (!cancelled) setHydrated(true);
     })();
@@ -129,6 +172,11 @@ export default function App() {
 
   const mainRows = rows.filter((r) => r.board === 'main').sort(sortRows);
   const sideRows = rows.filter((r) => r.board === 'side').sort(sortRows);
+
+  const collectionIds = useMemo(
+    () => new Set(deck.collection.map((e) => e.id)),
+    [deck.collection],
+  );
 
   if (error) return <div className="fatal">Erro: {error}</div>;
   if (!index) return <div className="loading">Carregando índice de cartas…</div>;
@@ -213,6 +261,9 @@ export default function App() {
           >
             {linking ? 'Gerando link…' : 'Gerar link curto'}
           </button>
+          <button type="button" onClick={() => setShowCollection((v) => !v)}>
+            Coleção {deck.collection.length > 0 && `(${deck.collection.length})`}
+          </button>
           <button type="button" className="danger" onClick={clear}>
             Limpar
           </button>
@@ -224,11 +275,27 @@ export default function App() {
           index={index}
           onImport={(text) => {
             const { deck: d, unresolved } = parseDeckText(text, index.cards);
-            replace({ ...d, name: deck.name });
+            replace({ ...d, name: deck.name, collection: deck.collection });
             if (unresolved.length) alert(`Não reconhecidas:\n${unresolved.join('\n')}`);
             setShowText(false);
           }}
           exportText={deckToText(deck, index.byId, lang)}
+        />
+      )}
+
+      {showCollection && (
+        <TextIO
+          index={index}
+          title="Sua coleção"
+          note='Cole a lista de cartas que você possui (aceita export de coleção com set/coletor, tipo "1 Waking Nightmare (MM2) 103"). Usada pra filtrar as Sugestões — não vai pro link compartilhado.'
+          placeholder={'3 Lightning Bolt\n1 Waking Nightmare (MM2) 103'}
+          onImport={(text) => {
+            const { entries, unresolved } = parseCollectionText(text, index.cards);
+            setCollection(entries);
+            if (unresolved.length) alert(`Não reconhecidas:\n${unresolved.join('\n')}`);
+            setShowCollection(false);
+          }}
+          exportText={collectionToText(deck.collection, index.byId, lang)}
         />
       )}
 
@@ -237,7 +304,14 @@ export default function App() {
       ) : view === 'visual' ? (
         <DeckVisual rows={rows} lang={lang} />
       ) : view === 'sugestoes' ? (
-        <Suggestions index={index} rows={rows} lang={lang} onAdd={(card) => add(card.id, 'main')} />
+        <Suggestions
+          index={index}
+          rows={rows}
+          lang={lang}
+          onAdd={(card) => add(card.id, 'main')}
+          collectionIds={collectionIds}
+          konamiUnlocked={konamiUnlocked}
+        />
       ) : (
         <main>
           <CardSearch
@@ -300,22 +374,30 @@ function TextIO({
   index,
   onImport,
   exportText,
+  title,
+  note,
+  placeholder,
 }: {
   index: Index;
   onImport: (text: string) => void;
   exportText: string;
+  title?: string;
+  note?: string;
+  placeholder?: string;
 }) {
   const [text, setText] = useState(exportText);
   useEffect(() => setText(exportText), [exportText]);
   void index;
   return (
     <div className="textio">
+      {title && <h3 className="textio-title">{title}</h3>}
+      {note && <p className="textio-note">{note}</p>}
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={12}
         spellCheck={false}
-        placeholder={'3 Lightning Bolt\n1 Raio\n\nSideboard\n2 Pyroblast'}
+        placeholder={placeholder ?? '3 Lightning Bolt\n1 Raio\n\nSideboard\n2 Pyroblast'}
       />
       <div>
         <button type="button" onClick={() => onImport(text)}>

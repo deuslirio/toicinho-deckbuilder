@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Board, Deck, DeckEntry } from '../lib/types';
 
-const EMPTY: Deck = { name: 'Novo deck', main: [], side: [] };
+const EMPTY: Deck = { name: 'Novo deck', main: [], side: [], collection: [] };
 
 interface DeckState {
   deck: Deck;
@@ -10,6 +10,7 @@ interface DeckState {
   add: (id: string, board?: Board, qty?: number) => void;
   setQty: (id: string, board: Board, qty: number) => void;
   move: (id: string, from: Board, to: Board) => void;
+  setCollection: (entries: DeckEntry[]) => void;
   clear: () => void;
   replace: (deck: Deck) => void;
 }
@@ -46,7 +47,11 @@ export const useDeck = create<DeckState>()(
             },
           };
         }),
-      clear: () => set({ deck: EMPTY }),
+      setCollection: (entries) => set((s) => ({ deck: { ...s.deck, collection: entries } })),
+      // "Limpar" reseta o deck sendo montado, mas a coleção (o que você tem
+      // de fato) é dado à parte — sobrevive a clear/import/link, só muda
+      // quando você mexe direto nela.
+      clear: () => set((s) => ({ deck: { ...EMPTY, collection: s.deck.collection } })),
       replace: (deck) => set({ deck }),
     }),
     { name: 'toicinho-deck' },
@@ -71,6 +76,8 @@ export function decodeDeck(hash: string): Deck | null {
       name: typeof c.n === 'string' ? c.n : 'Deck importado',
       main: (c.m ?? []).map(([id, qty]: [string, number]) => ({ id, qty })),
       side: (c.s ?? []).map(([id, qty]: [string, number]) => ({ id, qty })),
+      // a coleção é pessoal e não viaja no link — sempre volta vazia aqui.
+      collection: [],
     };
   } catch {
     return null;

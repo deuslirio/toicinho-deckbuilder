@@ -40,6 +40,8 @@ export interface Deck {
   name: string;
   main: DeckEntry[];
   side: DeckEntry[];
+  /** Cartas que a pessoa possui (fora do deck em si) — filtra as Sugestões. Não vai pro link. */
+  collection: DeckEntry[];
 }
 
 export interface BanlistFile {

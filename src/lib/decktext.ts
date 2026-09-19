@@ -27,9 +27,13 @@ export interface ParseResult {
   unresolved: string[];
 }
 
+// tira "(SET) 123", "(SET) S8", "(SET) 72a" e sujeira de coleção tipo
+// "(SET) 162★ *F*" (foil, estrelinha) que ferramentas de export costumam anexar.
+const SET_SUFFIX = /\s*\([A-Z0-9]{2,5}\)\s*[\w★]*\s*(\*F\*)?\s*$/i;
+
 export function parseDeckText(text: string, cards: IndexedCard[]): ParseResult {
   const { map, norm } = buildNameMap(cards);
-  const deck: Deck = { name: 'Deck importado', main: [], side: [] };
+  const deck: Deck = { name: 'Deck importado', main: [], side: [], collection: [] };
   const unresolved: string[] = [];
   let board: 'main' | 'side' = 'main';
 
@@ -43,7 +47,7 @@ export function parseDeckText(text: string, cards: IndexedCard[]): ParseResult {
     const m = line.match(LINE);
     if (!m) continue;
     const qty = m[1] ? parseInt(m[1], 10) : 1;
-    const name = m[2].replace(/\s*\([A-Z0-9]{2,5}\)\s*\d*\s*$/i, ''); // tira "(SET) 123"
+    const name = m[2].replace(SET_SUFFIX, '');
     const id = map.get(norm(name));
     if (!id) {
       unresolved.push(line);
@@ -55,6 +59,59 @@ export function parseDeckText(text: string, cards: IndexedCard[]): ParseResult {
     else list.push({ id, qty });
   }
   return { deck, unresolved };
+}
+
+/**
+ * Parser da coleção: mesmo formato de linha do deck ("3 Lightning Bolt" ou
+ * export de coleção tipo "1 Waking Nightmare (MM2) 103"), mas sem distinção
+ * de main/side — tudo é só "cartas que você tem". Marcadores de "Sideboard"
+ * no meio do texto são ignorados (a linha depois dele ainda soma normal).
+ */
+export function parseCollectionText(
+  text: string,
+  cards: IndexedCard[],
+): { entries: DeckEntry[]; unresolved: string[] } {
+  const { map, norm } = buildNameMap(cards);
+  const totals = new Map<string, number>();
+  const unresolved: string[] = [];
+
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#') || line.startsWith('//')) continue;
+    if (/^(sideboard|side ?board|reserva)\b/i.test(line)) continue;
+    const m = line.match(LINE);
+    if (!m) continue;
+    const qty = m[1] ? parseInt(m[1], 10) : 1;
+    const name = m[2].replace(SET_SUFFIX, '');
+    const id = map.get(norm(name));
+    if (!id) {
+      unresolved.push(line);
+      continue;
+    }
+    totals.set(id, (totals.get(id) ?? 0) + qty);
+  }
+  return { entries: [...totals].map(([id, qty]) => ({ id, qty })), unresolved };
+}
+
+export function collectionToText(
+  collection: DeckEntry[],
+  byId: Map<string, IndexedCard>,
+  lang: 'pt' | 'en',
+): string {
+  const sorted = [...collection].sort((a, b) => {
+    const ca = byId.get(a.id);
+    const cb = byId.get(b.id);
+    if (!ca || !cb) return ca ? -1 : cb ? 1 : 0;
+    return compareCards(ca, cb);
+  });
+  return sorted
+    .map((e) => {
+      const c = byId.get(e.id);
+      if (!c) return `${e.qty} ${e.id}`;
+      const name = lang === 'pt' && c.namePt ? c.namePt : c.name;
+      return `${e.qty} ${name}`;
+    })
+    .join('\n');
 }
 
 export function deckToText(deck: Deck, byId: Map<string, IndexedCard>, lang: 'pt' | 'en'): string {

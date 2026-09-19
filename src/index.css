@@ -184,6 +184,8 @@ main {
 
 .textio { margin-top: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
 .textio textarea { width: 100%; font-family: ui-monospace, monospace; }
+.textio-title { margin: 0 0 6px; font-size: 14px; }
+.textio-note { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
 
 footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
 
@@ -212,6 +214,8 @@ footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--line);
 .suggest { margin-top: 12px; }
 .suggest.empty { color: var(--muted); text-align: center; padding: 50px 20px; }
 .suggest-note { color: var(--muted); font-size: 12px; max-width: 640px; margin: 0 0 10px; }
+.suggest-egg { margin: 0 0 10px; font-size: 12px; }
+.suggest-egg.on { background: var(--accent); color: #1a1207; border-color: var(--accent); font-weight: 600; }
 .suggest-progress { color: var(--accent); font-size: 13px; margin: 4px 0 12px; }
 .suggest-h { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 16px 0 8px; }
 

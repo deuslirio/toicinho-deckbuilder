@@ -54,7 +54,15 @@ export const useDeck = create<DeckState>()(
       clear: () => set((s) => ({ deck: { ...EMPTY, collection: s.deck.collection } })),
       replace: (deck) => set({ deck }),
     }),
-    { name: 'toicinho-deck' },
+    {
+      name: 'toicinho-deck',
+      // deck salvo antes do campo "collection" existir não tem essa chave —
+      // sem isso, deck.collection fica undefined e quebra tudo que faz .map/.length nele.
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<DeckState>;
+        return { ...current, ...p, deck: { ...current.deck, ...p.deck } };
+      },
+    },
   ),
 );
 

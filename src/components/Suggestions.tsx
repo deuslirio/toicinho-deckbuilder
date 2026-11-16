@@ -8,8 +8,8 @@ import { useCardPreview } from './CardPreview';
 type Index = Awaited<ReturnType<typeof loadCardIndex>>;
 type Row = { card: IndexedCard; qty: number; board: 'main' | 'side' };
 
-const MAX_SOURCES = 40;
-const MAX_RESULTS = 30;
+const MAX_SOURCES = 60;
+const MAX_RESULTS = 50;
 const isLand = (c: IndexedCard) => /\bLand\b/.test(c.typeLine) && !/\bCreature\b/.test(c.typeLine);
 
 // ramp genérico que o EDHREC recomenda pra quase tudo (hábito de Commander) — ruído
@@ -182,7 +182,7 @@ export function Suggestions({
     }
     return out
       .sort((a, b) => a.missing.length - b.missing.length || b.decks - a.decks)
-      .slice(0, 12);
+      .slice(0, 18);
   }, [rawCombos, inDeck, deckColors, byName, collectionIds, showAll]);
 
   if (sources.length === 0) {
